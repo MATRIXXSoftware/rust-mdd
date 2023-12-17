@@ -1,3 +1,7 @@
+pub struct Containers {
+    pub containers: Vec<Container>,
+}
+
 pub struct Container {
     pub header: Header,
     pub fields: Vec<Field>,
