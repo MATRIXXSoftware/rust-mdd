@@ -22,7 +22,7 @@ pub struct Field {
     // pub value: Box<dyn std::any::Any>,
     pub value: Box<dyn Value>,
     pub is_multi: bool,
-    pub is_continue: bool,
+    pub is_container: bool,
 }
 
 pub trait Value {
