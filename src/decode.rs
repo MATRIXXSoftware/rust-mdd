@@ -49,9 +49,11 @@ impl CmdcCodec {
         let mut field_number = 0;
         let mut idx = 1;
         let mut mark = idx;
+        let mut complete = false;
         while idx < data.len() {
             match data[idx] {
                 b'>' => {
+                    complete = true;
                     idx += 1;
                     break;
                 }
@@ -65,7 +67,7 @@ impl CmdcCodec {
                         2 => header.depth = v as i8,
                         3 => header.key = v as i32,
                         4 => header.schema_version = v as u16,
-                        _ => return Err(format!("Invalid cMDC header, 6 fields exxpected").into()),
+                        _ => return Err(format!("Invalid cMDC header, 6 fields expected").into()),
                     }
                     field_number += 1;
 
@@ -85,6 +87,10 @@ impl CmdcCodec {
             idx += 1;
         }
 
+        if complete == false {
+            return Err("Invalid cMDC header, missing '>'".into());
+        }
+
         if field_number != 5 {
             return Err("Invalid cMDC header, 6 fields expected".into());
         }
@@ -97,7 +103,12 @@ impl CmdcCodec {
 
     fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
         let str_data = std::str::from_utf8(data)?;
-        Ok(str_data.parse::<i32>()?)
+        match str_data.parse::<i32>() {
+            Ok(v) => Ok(v),
+            Err(_) => {
+                Err(format!("Invalid cMDC header field '{}', numeric expected", str_data).into())
+            }
+        }
     }
 
     fn encode_body(&self) -> Result<Vec<Field>, Box<dyn Error>> {
@@ -134,5 +145,54 @@ mod tests {
                 panic!("decode error: {}", err);
             }
         }
+    }
+
+    #[test]
+    fn test_invalid_header1() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2,1>";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC header, 6 fields expected");
+    }
+
+    #[test]
+    fn test_invalid_header2() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222[1,20,300,4]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid cMDC character '[' in header, numeric expected"
+        );
+    }
+
+    #[test]
+    fn test_invalid_header3() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC header, missing '>'")
+    }
+
+    #[test]
+    fn test_invalid_header4() {
+        let codec = CmdcCodec {};
+        let data = b"1,18,0,-6,5222,2>[]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid cMDC header, first character must be '<'"
+        );
+    }
+
+    #[test]
+    fn test_invalid_header5() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,1-6,5222,2>[]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid cMDC header field '1-6', numeric expected"
+        );
     }
 }
