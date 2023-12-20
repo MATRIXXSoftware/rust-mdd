@@ -38,6 +38,7 @@ pub trait Value {
 
 #[derive(Debug)]
 pub enum FieldType {
+    Unknown,
     String,
     Int32,
     UInt32,

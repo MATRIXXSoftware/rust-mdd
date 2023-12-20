@@ -119,8 +119,124 @@ impl CmdcCodec {
         }
     }
 
-    fn decode_body(&self, _data: &[u8]) -> Result<(Vec<Field>, usize), Box<dyn Error>> {
-        Ok((vec![], 0))
+    fn decode_body(&self, data: &[u8]) -> Result<(Vec<Field>, usize), Box<dyn Error>> {
+        let mut fields = vec![];
+
+        if data.is_empty() {
+            return Err("Invalid cMDC body, no body".into());
+        }
+        if data[0] != b'[' {
+            return Err("Invalid cMDC body, first character must be '['".into());
+        }
+
+        let mut idx = 1;
+        let mut mark = idx;
+        // let mut round_mark = 0;
+
+        let mut square = 1;
+        let mut angle = 0;
+        let mut round = 0;
+        let mut curly = 0;
+
+        let mut is_multi = false;
+        let mut is_container = false;
+        let mut complete = false;
+
+        while idx < data.len() {
+            let c = data[idx];
+            // println!("c: {}", c as char);
+
+            if round != 0 {
+                match c {
+                    b':' => {
+                        // TODO
+                        // let field_data = &data[mark..idx];
+                        // let len = Self::bytes_to_int(field_data)?;
+                        // let len = Self::bytes_to_int(&data[round_mark + 1..idx])?;
+                        // idx += len;
+                    }
+                    b')' => {
+                        round -= 1;
+                    }
+                    c if c.is_ascii_digit() => {}
+                    c => {
+                        return Err(format!(
+                            "Invalid character '{}', numeric expected for string length",
+                            c as char
+                        )
+                        .into())
+                    }
+                }
+                idx += 1;
+                continue;
+            }
+
+            match c {
+                b'(' => {
+                    // round_mark = idx;
+                    round += 1;
+                }
+                b'[' => square += 1,
+                b']' => square -= 1,
+                b'<' => {
+                    is_container = true;
+                    angle += 1;
+                }
+                b'>' => angle -= 1,
+                b'{' => {
+                    curly += 1;
+                    is_multi = true;
+                }
+                b'}' => curly -= 1,
+                b',' => {
+                    if square == 1 && angle == 0 && curly == 0 {
+                        // Extract fields
+                        let field_data = &data[mark..idx];
+                        // println!("field_data: {:?}", std::str::from_utf8(field_data));
+
+                        mark = idx + 1;
+                        let field = Field {
+                            data: field_data.to_vec(),
+                            field_type: crate::mdd::FieldType::Unknown,
+                            //value: Value{},
+                            is_multi,
+                            is_container,
+                        };
+                        fields.push(field);
+                        is_multi = false;
+                        is_container = false;
+                    }
+                }
+                _ => {}
+            }
+
+            if square == 0 {
+                complete = true;
+                idx += 1;
+                break;
+            }
+
+            idx += 1;
+        }
+
+        if !complete {
+            return Err("Invalid cMDC body, no end of body".into());
+        }
+
+        // Extract last field
+        let field_data = &data[mark..idx - 1];
+        // println!("field_data: {:?}", std::str::from_utf8(field_data));
+
+        let field = Field {
+            data: field_data.to_vec(),
+            field_type: crate::mdd::FieldType::Unknown,
+            // value: Value {},
+            is_multi,
+            is_container,
+        };
+        fields.push(field);
+
+        Ok((fields, idx))
     }
 }
 
@@ -143,11 +259,12 @@ mod tests {
                 assert_eq!(container.header.key, -6);
                 assert_eq!(container.header.schema_version, 5222);
                 assert_eq!(container.header.ext_version, 2);
-                // assert_eq!(container.fields.len(), 1);
-                // assert_eq!(container.fields[0].data, b"[1,20,300,4]");
-                // assert_eq!(container.fields[0].field_type, FieldType::String);
-                // assert_eq!(container.fields[0].is_multi, false);
-                // assert_eq!(container.fields[0].is_continue, false);
+
+                assert_eq!(container.fields.len(), 4);
+                assert_eq!(container.fields[0].data, b"1");
+                assert_eq!(container.fields[1].data, b"20");
+                assert_eq!(container.fields[2].data, b"300");
+                assert_eq!(container.fields[3].data, b"4");
             }
             Err(err) => {
                 panic!("decode error: {}", err);
