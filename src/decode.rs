@@ -15,10 +15,7 @@ impl Codec for CmdcCodec {
     fn decode(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>> {
         let mut containers = Containers { containers: vec![] };
 
-        containers.containers.push(Container {
-            header: self.encode_header(data)?,
-            fields: self.encode_body()?,
-        });
+        containers.containers.push(self.decode_container(data)?);
 
         Ok(containers)
     }
@@ -29,7 +26,18 @@ impl Codec for CmdcCodec {
 }
 
 impl CmdcCodec {
-    fn encode_header(&self, data: &[u8]) -> Result<Header, Box<dyn Error>> {
+    fn decode_container(&self, data: &[u8]) -> Result<Container, Box<dyn Error>> {
+        // Decode Header
+        let (header, offset) = self.decode_header(data)?;
+
+        // Decode Body
+        let slice = &data[offset..];
+        let (fields, _offset) = self.decode_body(slice)?;
+
+        Ok(Container { header, fields })
+    }
+
+    fn decode_header(&self, data: &[u8]) -> Result<(Header, usize), Box<dyn Error>> {
         let mut header = Header {
             version: 0,
             total_field: 0,
@@ -98,7 +106,7 @@ impl CmdcCodec {
         let field_data = &data[mark..idx - 1];
         header.ext_version = Self::bytes_to_int(field_data)? as u16;
 
-        Ok(header)
+        Ok((header, idx))
     }
 
     fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
@@ -111,8 +119,8 @@ impl CmdcCodec {
         }
     }
 
-    fn encode_body(&self) -> Result<Vec<Field>, Box<dyn Error>> {
-        Ok(vec![])
+    fn decode_body(&self, _data: &[u8]) -> Result<(Vec<Field>, usize), Box<dyn Error>> {
+        Ok((vec![], 0))
     }
 }
 
