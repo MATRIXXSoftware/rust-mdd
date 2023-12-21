@@ -15,7 +15,12 @@ impl Codec for CmdcCodec {
     fn decode(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>> {
         let mut containers = Containers { containers: vec![] };
 
-        containers.containers.push(self.decode_container(data)?);
+        let mut idx = 0;
+        while idx < data.len() {
+            let (container, offset) = self.decode_container(&data[idx..])?;
+            idx += offset;
+            containers.containers.push(container);
+        }
 
         Ok(containers)
     }
@@ -26,15 +31,19 @@ impl Codec for CmdcCodec {
 }
 
 impl CmdcCodec {
-    fn decode_container(&self, data: &[u8]) -> Result<Container, Box<dyn Error>> {
+    fn decode_container(&self, data: &[u8]) -> Result<(Container, usize), Box<dyn Error>> {
+        let mut idx = 0;
+
         // Decode Header
         let (header, offset) = self.decode_header(data)?;
+        idx += offset;
 
         // Decode Body
-        let slice = &data[offset..];
-        let (fields, _offset) = self.decode_body(slice)?;
+        let slice = &data[idx..];
+        let (fields, offset) = self.decode_body(slice)?;
+        idx += offset;
 
-        Ok(Container { header, fields })
+        Ok((Container { header, fields }, idx))
     }
 
     fn decode_header(&self, data: &[u8]) -> Result<(Header, usize), Box<dyn Error>> {
@@ -280,28 +289,39 @@ mod tests {
     #[test]
     fn test_decode_containers() {
         let codec = CmdcCodec {};
-        // let data = b"<1,18,0,-6,5222,2>[1,20,(3:def),4]";
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]<1,5,0,-7,5222,2>[,2,(3:def),4]";
 
         let result = codec.decode(data);
         match result {
-            Ok(_containers) => {
-                // TODO
-                // assert_eq!(containers.containers.len(), 2);
+            Ok(containers) => {
+                assert_eq!(containers.containers.len(), 2);
+                let container0 = &containers.containers[0];
+                assert_eq!(container0.header.version, 1);
+                assert_eq!(container0.header.total_field, 18);
+                assert_eq!(container0.header.depth, 0);
+                assert_eq!(container0.header.key, -6);
+                assert_eq!(container0.header.schema_version, 5222);
+                assert_eq!(container0.header.ext_version, 2);
 
-                // let container1 = &containers.containers[1];
-                // assert_eq!(container1.header.version, 1);
-                // assert_eq!(container1.header.total_field, 18);
-                // assert_eq!(container1.header.depth, 0);
-                // assert_eq!(container1.header.key, -6);
-                // assert_eq!(container1.header.schema_version, 5222);
-                // assert_eq!(container1.header.ext_version, 2);
-                //
-                // assert_eq!(container1.fields.len(), 4);
-                // assert_eq!(container1.fields[0].data, b"");
-                // assert_eq!(container1.fields[1].data, b"2");
-                // assert_eq!(container1.fields[2].data, b"(3:def)");
-                // assert_eq!(container1.fields[3].data, b"4");
+                assert_eq!(container0.fields.len(), 4);
+                assert_eq!(container0.fields[0].data, b"1");
+                assert_eq!(container0.fields[1].data, b"20");
+                assert_eq!(container0.fields[2].data, b"300");
+                assert_eq!(container0.fields[3].data, b"4");
+
+                let container1 = &containers.containers[1];
+                assert_eq!(container1.header.version, 1);
+                assert_eq!(container1.header.total_field, 5);
+                assert_eq!(container1.header.depth, 0);
+                assert_eq!(container1.header.key, -7);
+                assert_eq!(container1.header.schema_version, 5222);
+                assert_eq!(container1.header.ext_version, 2);
+
+                assert_eq!(container1.fields.len(), 4);
+                assert_eq!(container1.fields[0].data, b"");
+                assert_eq!(container1.fields[1].data, b"2");
+                assert_eq!(container1.fields[2].data, b"(3:def)");
+                assert_eq!(container1.fields[3].data, b"4");
             }
             Err(err) => {
                 panic!("decode error: {}", err);
