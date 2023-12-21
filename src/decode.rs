@@ -131,7 +131,7 @@ impl CmdcCodec {
 
         let mut idx = 1;
         let mut mark = idx;
-        // let mut round_mark = 0;
+        let mut round_mark = 0;
 
         let mut square = 1;
         let mut angle = 0;
@@ -149,22 +149,27 @@ impl CmdcCodec {
             if round != 0 {
                 match c {
                     b':' => {
-                        // TODO
-                        // let field_data = &data[mark..idx];
-                        // let len = Self::bytes_to_int(field_data)?;
-                        // let len = Self::bytes_to_int(&data[round_mark + 1..idx])?;
-                        // idx += len;
+                        let field_data = &data[round_mark + 1..idx];
+                        let len = Self::bytes_to_int(field_data)?;
+                        // skip the string field
+                        idx += len as usize;
+                        // reset round mark
+                        round_mark = 0;
                     }
                     b')' => {
                         round -= 1;
                     }
-                    c if c.is_ascii_digit() => {}
                     c => {
-                        return Err(format!(
-                            "Invalid character '{}', numeric expected for string length",
-                            c as char
-                        )
-                        .into())
+                        if round_mark == 0 {
+                            return Err("Invalid cMDC body, mismatch string length".into());
+                        }
+                        if !c.is_ascii_digit() {
+                            return Err(format!(
+                                "Invalid character '{}', numeric expected for string length",
+                                c as char
+                            )
+                            .into());
+                        }
                     }
                 }
                 idx += 1;
@@ -173,7 +178,7 @@ impl CmdcCodec {
 
             match c {
                 b'(' => {
-                    // round_mark = idx;
+                    round_mark = idx;
                     round += 1;
                 }
                 b'[' => square += 1,
@@ -273,6 +278,54 @@ mod tests {
     }
 
     #[test]
+    fn test_decode_containers() {
+        let codec = CmdcCodec {};
+        // let data = b"<1,18,0,-6,5222,2>[1,20,(3:def),4]";
+        let data = b"<1,18,0,-6,5222,2>[1,20,300,4]<1,5,0,-7,5222,2>[,2,(3:def),4]";
+
+        let result = codec.decode(data);
+        match result {
+            Ok(_containers) => {
+                // TODO
+                // assert_eq!(containers.containers.len(), 2);
+
+                // let container1 = &containers.containers[1];
+                // assert_eq!(container1.header.version, 1);
+                // assert_eq!(container1.header.total_field, 18);
+                // assert_eq!(container1.header.depth, 0);
+                // assert_eq!(container1.header.key, -6);
+                // assert_eq!(container1.header.schema_version, 5222);
+                // assert_eq!(container1.header.ext_version, 2);
+                //
+                // assert_eq!(container1.fields.len(), 4);
+                // assert_eq!(container1.fields[0].data, b"");
+                // assert_eq!(container1.fields[1].data, b"2");
+                // assert_eq!(container1.fields[2].data, b"(3:def)");
+                // assert_eq!(container1.fields[3].data, b"4");
+            }
+            Err(err) => {
+                panic!("decode error: {}", err);
+            }
+        }
+    }
+
+    #[test]
+    fn test_decode_field_with_reserved_char() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,2,(10:v[<ue(obar),4,,6]";
+        let containers = codec.decode(data).unwrap();
+        let container = &containers.containers[0];
+
+        assert_eq!(container.fields.len(), 6);
+        assert_eq!(container.fields[0].data, b"1");
+        assert_eq!(container.fields[1].data, b"2");
+        assert_eq!(container.fields[2].data, b"(10:v[<ue(obar)");
+        assert_eq!(container.fields[3].data, b"4");
+        assert_eq!(container.fields[4].data, b"");
+        assert_eq!(container.fields[5].data, b"6");
+    }
+
+    #[test]
     fn test_invalid_header1() {
         let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2,1>";
@@ -319,5 +372,24 @@ mod tests {
             err.to_string(),
             "Invalid cMDC header field '1-6', numeric expected"
         );
+    }
+
+    #[test]
+    fn test_invalid_body4() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(abc:foo),3,4]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid character 'a', numeric expected for string length"
+        );
+    }
+
+    #[test]
+    fn test_invalid_body5() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(5:foo),3,4]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
 }
