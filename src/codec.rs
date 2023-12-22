@@ -4,6 +4,7 @@ use crate::mdd::Field;
 use crate::mdd::FieldType;
 use crate::mdd::Header;
 use std::error::Error;
+use std::io::Write;
 
 pub trait Codec {
     fn decode(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>>;
@@ -248,7 +249,6 @@ impl CmdcCodec {
 
     fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
         let str_data = std::str::from_utf8(data)?;
-        // Ok(str_data.parse::<i32>()?)
         str_data
             .parse::<i32>()
             .map_err(|_| format!("Invalid digit found in '{}'", str_data).into())
@@ -269,39 +269,43 @@ impl CmdcCodec {
     }
 
     fn encode_header(&self, header: &Header) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut data = Vec::new();
+        // Predefine the capacity of the vector to avoid reallocation
+        let estimated_size = 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
+        let mut data = Vec::with_capacity(estimated_size);
+        // let mut data = Vec::new();
 
-        data.push(b'<');
-        data.extend(header.version.to_string().bytes());
-        data.push(b',');
-        data.extend(header.total_field.to_string().bytes());
-        data.push(b',');
-        data.extend(header.depth.to_string().bytes());
-        data.push(b',');
-        data.extend(header.key.to_string().bytes());
-        data.push(b',');
-        data.extend(header.schema_version.to_string().bytes());
-        data.push(b',');
-        data.extend(header.ext_version.to_string().bytes());
-        data.push(b'>');
+        write!(
+            data,
+            "<{},{},{},{},{},{}>",
+            header.version,
+            header.total_field,
+            header.depth,
+            header.key,
+            header.schema_version,
+            header.ext_version
+        )?;
 
         Ok(data)
     }
 
     fn encode_body(&self, fields: &[Field]) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut data = Vec::new();
+        // Predefine the capacity of the vector to avoid reallocation
+        let mut estimated_len = fields.len() + 2;
+        for field in fields.iter() {
+            estimated_len += field.data.len();
+        }
+        let mut data = Vec::with_capacity(estimated_len);
+        // let mut data = Vec::new();
 
         data.push(b'[');
-
-        if fields.len() > 0 {
-            data.extend(fields[0].data.clone());
-
-            for field in &fields[1..] {
+        for (i, field) in fields.iter().enumerate() {
+            if i > 0 {
                 data.push(b',');
-                data.extend(field.data.clone());
             }
+            // Use reference instead of clone for best performrance, but might be risky
+            data.extend(&field.data);
+            // data.extend(field.data.clone());
         }
-
         data.push(b']');
 
         Ok(data)
