@@ -9,7 +9,7 @@ pub trait Codec {
     fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>>;
 }
 
-struct CmdcCodec {}
+pub struct CmdcCodec {}
 
 impl Codec for CmdcCodec {
     fn decode(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>> {

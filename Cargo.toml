@@ -1,8 +1,15 @@
 [package]
-name = "rust-mdd"
+name = "rust_mdd"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+
+[dev-dependencies]
+
+[[bench]]
+name = "codec_bench"
+path = "benches/codec_bench.rs"
+# harness = false # Set to false to allow custom benchmark runners
