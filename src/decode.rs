@@ -76,7 +76,8 @@ impl CmdcCodec {
                 }
                 b',' => {
                     let field_data = &data[mark..idx];
-                    let v = Self::bytes_to_int(field_data)?;
+                    let v = Self::bytes_to_int(field_data)
+                        .map_err(|err| format!("Invalid cMDC header, {}", err))?;
 
                     match field_number {
                         0 => header.version = v as u8,
@@ -113,19 +114,11 @@ impl CmdcCodec {
         }
 
         let field_data = &data[mark..idx - 1];
-        header.ext_version = Self::bytes_to_int(field_data)? as u16;
+        let v = Self::bytes_to_int(field_data)
+            .map_err(|err| format!("Invalid cMDC header, {}", err))?;
+        header.ext_version = v as u16;
 
         Ok((header, idx))
-    }
-
-    fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
-        let str_data = std::str::from_utf8(data)?;
-        match str_data.parse::<i32>() {
-            Ok(v) => Ok(v),
-            Err(_) => {
-                Err(format!("Invalid cMDC header field '{}', numeric expected", str_data).into())
-            }
-        }
     }
 
     fn decode_body(&self, data: &[u8]) -> Result<(Vec<Field>, usize), Box<dyn Error>> {
@@ -159,7 +152,9 @@ impl CmdcCodec {
                 match c {
                     b':' => {
                         let field_data = &data[round_mark + 1..idx];
-                        let len = Self::bytes_to_int(field_data)?;
+                        let len = Self::bytes_to_int(field_data)
+                            .map_err(|err| format!("Invalid string field, {}", err))?;
+
                         // skip the string field
                         idx += len as usize;
                         // reset round mark
@@ -252,6 +247,14 @@ impl CmdcCodec {
 
         Ok((fields, idx))
     }
+
+    fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
+        let str_data = std::str::from_utf8(data)?;
+        // Ok(str_data.parse::<i32>()?)
+        str_data
+            .parse::<i32>()
+            .map_err(|_| format!("Invalid digit found in '{}'", str_data).into())
+    }
 }
 
 #[cfg(test)]
@@ -259,7 +262,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_decode() {
+    fn test_decode_single_container1() {
         let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]";
 
@@ -287,7 +290,40 @@ mod tests {
     }
 
     #[test]
-    fn test_decode_containers() {
+    fn test_decode_single_container2() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[,(6:value2),3,2021-09-07T08:00:25.000001Z,2021-10-31,09:13:02.667997Z,88,5.5,]";
+
+        let result = codec.decode(data);
+        match result {
+            Ok(containers) => {
+                let container = &containers.containers[0];
+                assert_eq!(container.header.version, 1);
+                assert_eq!(container.header.total_field, 18);
+                assert_eq!(container.header.depth, 0);
+                assert_eq!(container.header.key, -6);
+                assert_eq!(container.header.schema_version, 5222);
+                assert_eq!(container.header.ext_version, 2);
+
+                assert_eq!(container.fields.len(), 9);
+                assert_eq!(container.fields[0].data, b"");
+                assert_eq!(container.fields[1].data, b"(6:value2)");
+                assert_eq!(container.fields[2].data, b"3");
+                assert_eq!(container.fields[3].data, b"2021-09-07T08:00:25.000001Z");
+                assert_eq!(container.fields[4].data, b"2021-10-31");
+                assert_eq!(container.fields[5].data, b"09:13:02.667997Z");
+                assert_eq!(container.fields[6].data, b"88");
+                assert_eq!(container.fields[7].data, b"5.5");
+                assert_eq!(container.fields[8].data, b"");
+            }
+            Err(err) => {
+                panic!("decode error: {}", err);
+            }
+        }
+    }
+
+    #[test]
+    fn test_decode_multi_containers() {
         let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]<1,5,0,-7,5222,2>[,2,(3:def),4]";
 
@@ -327,6 +363,98 @@ mod tests {
                 panic!("decode error: {}", err);
             }
         }
+    }
+
+    #[test]
+    fn test_decode_nested_containers() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,20,<1,2,0,452,5222,2>[100],4]";
+        let containers = codec.decode(data).unwrap();
+        let container = &containers.containers[0];
+
+        assert_eq!(container.fields.len(), 4);
+        assert_eq!(container.fields[0].data, b"1");
+        assert_eq!(container.fields[1].data, b"20");
+        assert_eq!(container.fields[2].data, b"<1,2,0,452,5222,2>[100]");
+        assert_eq!(container.fields[3].data, b"4");
+
+        assert_eq!(container.fields[0].is_container, false);
+        assert_eq!(container.fields[1].is_container, false);
+        assert_eq!(container.fields[2].is_container, true);
+        assert_eq!(container.fields[3].is_container, false);
+    }
+
+    #[test]
+    fn test_list_integer_value() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[0,{1,2,3},,,300,{4,5}]";
+        let containers = codec.decode(data).unwrap();
+        let container = &containers.containers[0];
+
+        assert_eq!(container.fields.len(), 6);
+        assert_eq!(container.fields[0].data, b"0");
+        assert_eq!(container.fields[1].data, b"{1,2,3}");
+        assert_eq!(container.fields[2].data, b"");
+        assert_eq!(container.fields[3].data, b"");
+        assert_eq!(container.fields[4].data, b"300");
+        assert_eq!(container.fields[5].data, b"{4,5}");
+
+        assert_eq!(container.fields[0].is_multi, false);
+        assert_eq!(container.fields[1].is_multi, true);
+        assert_eq!(container.fields[2].is_multi, false);
+        assert_eq!(container.fields[3].is_multi, false);
+        assert_eq!(container.fields[4].is_multi, false);
+        assert_eq!(container.fields[5].is_multi, true);
+    }
+
+    #[test]
+    fn test_decode_empty_body() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[]";
+        let containers = codec.decode(data).unwrap();
+
+        assert!(containers.containers.len() == 1);
+        let container = &containers.containers[0];
+        assert_eq!(container.fields[0].data, b"");
+    }
+
+    #[test]
+    fn test_zero_len_string_field() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(0:),3,4]";
+        let containers = codec.decode(data).unwrap();
+
+        let container = &containers.containers[0];
+        assert_eq!(container.fields[0].data, b"1");
+        assert_eq!(container.fields[1].data, b"(0:)");
+        assert_eq!(container.fields[2].data, b"3");
+        assert_eq!(container.fields[3].data, b"4");
+    }
+
+    #[test]
+    fn test_empty_string_field() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(),3,4]";
+        let containers = codec.decode(data).unwrap();
+
+        let container = &containers.containers[0];
+        assert_eq!(container.fields[0].data, b"1");
+        assert_eq!(container.fields[1].data, b"()");
+        assert_eq!(container.fields[2].data, b"3");
+        assert_eq!(container.fields[3].data, b"4");
+    }
+
+    #[test]
+    fn test_unicode_string_field() {
+        let codec = CmdcCodec {};
+        let data = "<1,18,0,-6,5222,2>[1,(6:富爸),3,4]".as_bytes();
+        let containers = codec.decode(data).unwrap();
+
+        let container = &containers.containers[0];
+        assert_eq!(container.fields[0].data, b"1");
+        assert_eq!(container.fields[1].data, "(6:富爸)".as_bytes());
+        assert_eq!(container.fields[2].data, b"3");
+        assert_eq!(container.fields[3].data, b"4");
     }
 
     #[test]
@@ -390,7 +518,34 @@ mod tests {
         let err = codec.decode(data).unwrap_err();
         assert_eq!(
             err.to_string(),
-            "Invalid cMDC header field '1-6', numeric expected"
+            "Invalid cMDC header, Invalid digit found in '1-6'"
+        );
+    }
+
+    #[test]
+    fn test_invalid_body1() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,20,300,4";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC body, no end of body");
+    }
+
+    #[test]
+    fn test_invalid_body2() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC body, no body");
+    }
+
+    #[test]
+    fn test_invalid_body3() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>1,2,3]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(
+            err.to_string(),
+            "Invalid cMDC body, first character must be '['"
         );
     }
 
@@ -412,4 +567,20 @@ mod tests {
         let err = codec.decode(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
+
+    #[test]
+    fn test_invalid_body6() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(5:foobar),3,4]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
+    }
+
+    // #[test]
+    // fn test_invalid_body7() {
+    //     let codec = CmdcCodec {};
+    //     let data = b"<1,18,0,-6,5222,2>[1,(5:fooba:),3,4]";
+    //     let err = codec.decode(data).unwrap_err();
+    //     assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
+    // }
 }
