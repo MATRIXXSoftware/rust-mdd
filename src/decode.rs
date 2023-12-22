@@ -149,32 +149,22 @@ impl CmdcCodec {
             // println!("c: {}", c as char);
 
             if round != 0 {
-                match c {
-                    b':' => {
-                        let field_data = &data[round_mark + 1..idx];
-                        let len = Self::bytes_to_int(field_data)
-                            .map_err(|err| format!("Invalid string field, {}", err))?;
-
-                        // skip the string field
-                        idx += len as usize;
-                        // reset round mark
-                        round_mark = 0;
-                    }
-                    b')' => {
-                        round -= 1;
-                    }
-                    c => {
-                        if round_mark == 0 {
-                            return Err("Invalid cMDC body, mismatch string length".into());
-                        }
-                        if !c.is_ascii_digit() {
-                            return Err(format!(
-                                "Invalid character '{}', numeric expected for string length",
-                                c as char
-                            )
-                            .into());
-                        }
-                    }
+                if c == b')' {
+                    round -= 1;
+                } else if round_mark == 0 {
+                    return Err("Invalid cMDC body, mismatch string length".into());
+                } else if c == b':' {
+                    let field_data = &data[round_mark + 1..idx];
+                    let len = Self::bytes_to_int(field_data)
+                        .map_err(|err| format!("Invalid string field, {}", err))?;
+                    idx += len as usize; // skip the string field
+                    round_mark = 0; // reset round mark
+                } else if !c.is_ascii_digit() {
+                    return Err(format!(
+                        "Invalid character '{}', numeric expected for string length",
+                        c as char
+                    )
+                    .into());
                 }
                 idx += 1;
                 continue;
@@ -576,11 +566,11 @@ mod tests {
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
 
-    // #[test]
-    // fn test_invalid_body7() {
-    //     let codec = CmdcCodec {};
-    //     let data = b"<1,18,0,-6,5222,2>[1,(5:fooba:),3,4]";
-    //     let err = codec.decode(data).unwrap_err();
-    //     assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
-    // }
+    #[test]
+    fn test_invalid_body7() {
+        let codec = CmdcCodec {};
+        let data = b"<1,18,0,-6,5222,2>[1,(5:fooba:),3,4]";
+        let err = codec.decode(data).unwrap_err();
+        assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
+    }
 }
