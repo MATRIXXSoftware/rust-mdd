@@ -654,34 +654,10 @@ mod tests {
                     ext_version: 2,
                 },
                 fields: vec![
-                    Field {
-                        data: "1".as_bytes().to_vec(),
-                        field_type: FieldType::Unknown,
-                        value: None,
-                        is_multi: false,
-                        is_container: false,
-                    },
-                    Field {
-                        data: "20".as_bytes().to_vec(),
-                        field_type: FieldType::Unknown,
-                        value: None,
-                        is_multi: false,
-                        is_container: false,
-                    },
-                    Field {
-                        data: "(5:three)".as_bytes().to_vec(),
-                        field_type: FieldType::Unknown,
-                        value: None,
-                        is_multi: false,
-                        is_container: false,
-                    },
-                    Field {
-                        data: "400000".as_bytes().to_vec(),
-                        field_type: FieldType::Unknown,
-                        value: None,
-                        is_multi: false,
-                        is_container: false,
-                    },
+                    Field::raw("1".as_bytes().to_vec()),
+                    Field::raw("20".as_bytes().to_vec()),
+                    Field::raw("(5:three)".as_bytes().to_vec()),
+                    Field::raw("400000".as_bytes().to_vec()),
                 ],
             }],
         };

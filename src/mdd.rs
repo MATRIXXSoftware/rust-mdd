@@ -23,7 +23,7 @@ pub struct Header {
 pub struct Field {
     pub data: Vec<u8>,
     pub field_type: FieldType,
-    pub value: Option<Box<dyn Value>>, // This hurts performance
+    pub value: Option<Box<dyn Value>>,
     pub is_multi: bool,
     pub is_container: bool,
 }
@@ -42,4 +42,16 @@ pub enum FieldType {
     Int32,
     UInt32,
     Bool,
+}
+
+impl Field {
+    pub fn raw(data: Vec<u8>) -> Self {
+        Field {
+            data,
+            field_type: FieldType::Unknown,
+            value: None,
+            is_multi: false,
+            is_container: false,
+        }
+    }
 }
