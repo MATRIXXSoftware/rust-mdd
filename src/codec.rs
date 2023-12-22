@@ -1,6 +1,7 @@
 use crate::mdd::Container;
 use crate::mdd::Containers;
 use crate::mdd::Field;
+use crate::mdd::FieldType;
 use crate::mdd::Header;
 use std::error::Error;
 
@@ -25,8 +26,15 @@ impl Codec for CmdcCodec {
         Ok(containers)
     }
 
-    fn encode(&self, _containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        todo!()
+    fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut data = Vec::new();
+
+        for container in &containers.containers {
+            let container_data = self.encode_container(container)?;
+            data.extend(container_data);
+        }
+
+        Ok(data)
     }
 }
 
@@ -196,7 +204,7 @@ impl CmdcCodec {
                         mark = idx + 1;
                         let field = Field {
                             data: field_data.to_vec(),
-                            field_type: crate::mdd::FieldType::Unknown,
+                            field_type: FieldType::Unknown,
                             //value: Value{},
                             is_multi,
                             is_container,
@@ -228,7 +236,7 @@ impl CmdcCodec {
 
         let field = Field {
             data: field_data.to_vec(),
-            field_type: crate::mdd::FieldType::Unknown,
+            field_type: FieldType::Unknown,
             // value: Value {},
             is_multi,
             is_container,
@@ -244,6 +252,59 @@ impl CmdcCodec {
         str_data
             .parse::<i32>()
             .map_err(|_| format!("Invalid digit found in '{}'", str_data).into())
+    }
+
+    fn encode_container(&self, container: &Container) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut data = Vec::new();
+
+        // Encode Header
+        let header_data = self.encode_header(&container.header)?;
+        data.extend(header_data);
+
+        // Encode Body
+        let body_data = self.encode_body(&container.fields)?;
+        data.extend(body_data);
+
+        Ok(data)
+    }
+
+    fn encode_header(&self, header: &Header) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut data = Vec::new();
+
+        data.push(b'<');
+        data.extend(header.version.to_string().bytes());
+        data.push(b',');
+        data.extend(header.total_field.to_string().bytes());
+        data.push(b',');
+        data.extend(header.depth.to_string().bytes());
+        data.push(b',');
+        data.extend(header.key.to_string().bytes());
+        data.push(b',');
+        data.extend(header.schema_version.to_string().bytes());
+        data.push(b',');
+        data.extend(header.ext_version.to_string().bytes());
+        data.push(b'>');
+
+        Ok(data)
+    }
+
+    fn encode_body(&self, fields: &[Field]) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut data = Vec::new();
+
+        data.push(b'[');
+
+        if fields.len() > 0 {
+            data.extend(fields[0].data.clone());
+
+            for field in &fields[1..] {
+                data.push(b',');
+                data.extend(field.data.clone());
+            }
+        }
+
+        data.push(b']');
+
+        Ok(data)
     }
 }
 
@@ -572,5 +633,52 @@ mod tests {
         let data = b"<1,18,0,-6,5222,2>[1,(5:fooba:),3,4]";
         let err = codec.decode(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
+    }
+
+    #[test]
+    fn test_encode_container() {
+        let codec = CmdcCodec {};
+
+        let containers = Containers {
+            containers: vec![Container {
+                header: Header {
+                    version: 1,
+                    total_field: 18,
+                    depth: 0,
+                    key: -6,
+                    schema_version: 5222,
+                    ext_version: 2,
+                },
+                fields: vec![
+                    Field {
+                        data: "1".as_bytes().to_vec(),
+                        field_type: FieldType::Unknown,
+                        is_multi: false,
+                        is_container: false,
+                    },
+                    Field {
+                        data: "20".as_bytes().to_vec(),
+                        field_type: FieldType::Unknown,
+                        is_multi: false,
+                        is_container: false,
+                    },
+                    Field {
+                        data: "(5:three)".as_bytes().to_vec(),
+                        field_type: FieldType::Unknown,
+                        is_multi: false,
+                        is_container: false,
+                    },
+                    Field {
+                        data: "400000".as_bytes().to_vec(),
+                        field_type: FieldType::Unknown,
+                        is_multi: false,
+                        is_container: false,
+                    },
+                ],
+            }],
+        };
+
+        let encoded = codec.encode(&containers).unwrap();
+        assert_eq!(encoded, b"<1,18,0,-6,5222,2>[1,20,(5:three),400000]");
     }
 }
