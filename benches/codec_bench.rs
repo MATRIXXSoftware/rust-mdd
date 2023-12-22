@@ -8,7 +8,7 @@ use rust_mdd::codec::{CmdcCodec, Codec};
 fn bench_decode(b: &mut Bencher) {
     let codec = CmdcCodec {};
     let data = b"<1,18,0,-6,5222,2>[1,20,<1,2,0,452,5222,2>[100],4]";
-    b.iter(|| codec.decode(data));
+    b.iter(|| codec.decode(data))
 }
 
 #[bench]
@@ -17,7 +17,7 @@ fn bench_encode(b: &mut Bencher) {
     let containers = codec
         .decode(b"<1,18,0,-6,5222,2>[1,20,<1,2,0,452,5222,2>[100],4]")
         .unwrap();
-    b.iter(|| codec.encode(&containers));
+    b.iter(|| codec.encode(&containers))
 }
 
 fn main() {}

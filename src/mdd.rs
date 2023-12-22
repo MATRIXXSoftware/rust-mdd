@@ -23,13 +23,12 @@ pub struct Header {
 pub struct Field {
     pub data: Vec<u8>,
     pub field_type: FieldType,
-    // pub value: Box<dyn std::any::Any>,
-    // pub value: Box<dyn Value>, // TODO
+    pub value: Option<Box<dyn Value>>, // This hurts performance
     pub is_multi: bool,
     pub is_container: bool,
 }
 
-pub trait Value {
+pub trait Value: std::fmt::Debug {
     fn to_string(&self) -> String;
     fn to_int32(&self) -> i32;
     fn to_uint32(&self) -> u32;

@@ -206,7 +206,7 @@ impl CmdcCodec {
                         let field = Field {
                             data: field_data.to_vec(),
                             field_type: FieldType::Unknown,
-                            //value: Value{},
+                            value: None,
                             is_multi,
                             is_container,
                         };
@@ -238,7 +238,7 @@ impl CmdcCodec {
         let field = Field {
             data: field_data.to_vec(),
             field_type: FieldType::Unknown,
-            // value: Value {},
+            value: None,
             is_multi,
             is_container,
         };
@@ -657,24 +657,28 @@ mod tests {
                     Field {
                         data: "1".as_bytes().to_vec(),
                         field_type: FieldType::Unknown,
+                        value: None,
                         is_multi: false,
                         is_container: false,
                     },
                     Field {
                         data: "20".as_bytes().to_vec(),
                         field_type: FieldType::Unknown,
+                        value: None,
                         is_multi: false,
                         is_container: false,
                     },
                     Field {
                         data: "(5:three)".as_bytes().to_vec(),
                         field_type: FieldType::Unknown,
+                        value: None,
                         is_multi: false,
                         is_container: false,
                     },
                     Field {
                         data: "400000".as_bytes().to_vec(),
                         field_type: FieldType::Unknown,
+                        value: None,
                         is_multi: false,
                         is_container: false,
                     },
