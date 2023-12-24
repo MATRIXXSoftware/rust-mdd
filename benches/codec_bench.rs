@@ -2,7 +2,8 @@
 extern crate test;
 use test::Bencher;
 
-use rust_mdd::codec::{CmdcCodec, Codec};
+use rust_mdd::cmdc::CmdcCodec;
+use rust_mdd::codec::Codec;
 
 #[bench]
 fn bench_decode(b: &mut Bencher) {
