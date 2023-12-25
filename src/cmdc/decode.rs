@@ -7,7 +7,7 @@ use crate::mdd::Header;
 use std::error::Error;
 
 impl CmdcCodec {
-    pub fn decode_containers(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>> {
+    pub fn decode_containers<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
         let mut containers = Containers { containers: vec![] };
 
         let mut idx = 0;
@@ -20,7 +20,10 @@ impl CmdcCodec {
         Ok(containers)
     }
 
-    fn decode_container(&self, data: &[u8]) -> Result<(Container, usize), Box<dyn Error>> {
+    fn decode_container<'a>(
+        &self,
+        data: &'a [u8],
+    ) -> Result<(Container<'a>, usize), Box<dyn Error>> {
         let mut idx = 0;
 
         // Decode Header
@@ -110,7 +113,7 @@ impl CmdcCodec {
         Ok((header, idx))
     }
 
-    fn decode_body(&self, data: &[u8]) -> Result<(Vec<Field>, usize), Box<dyn Error>> {
+    fn decode_body<'a>(&self, data: &'a [u8]) -> Result<(Vec<Field<'a>>, usize), Box<dyn Error>> {
         let mut fields = vec![];
 
         if data.is_empty() {
@@ -184,7 +187,7 @@ impl CmdcCodec {
 
                         mark = idx + 1;
                         let field = Field {
-                            data: field_data.to_vec(),
+                            data: field_data,
                             field_type: FieldType::Unknown,
                             value: None,
                             is_multi,
@@ -216,7 +219,7 @@ impl CmdcCodec {
         // println!("field_data: {:?}", std::str::from_utf8(field_data));
 
         let field = Field {
-            data: field_data.to_vec(),
+            data: field_data,
             field_type: FieldType::Unknown,
             value: None,
             is_multi,

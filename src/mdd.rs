@@ -1,12 +1,12 @@
 #[derive(Debug)]
-pub struct Containers {
-    pub containers: Vec<Container>,
+pub struct Containers<'a> {
+    pub containers: Vec<Container<'a>>,
 }
 
 #[derive(Debug)]
-pub struct Container {
+pub struct Container<'a> {
     pub header: Header,
-    pub fields: Vec<Field>,
+    pub fields: Vec<Field<'a>>,
 }
 
 #[derive(Debug)]
@@ -20,8 +20,9 @@ pub struct Header {
 }
 
 #[derive(Debug)]
-pub struct Field {
-    pub data: Vec<u8>,
+pub struct Field<'a> {
+    // pub data: Vec<u8>,
+    pub data: &'a [u8],
     pub field_type: FieldType,
     pub value: Option<Box<dyn Value>>,
     pub is_multi: bool,
@@ -44,8 +45,8 @@ pub enum FieldType {
     Bool,
 }
 
-impl Field {
-    pub fn raw(data: Vec<u8>) -> Self {
+impl<'a> Field<'a> {
+    pub fn raw(data: &'a [u8]) -> Self {
         Field {
             data,
             field_type: FieldType::Unknown,

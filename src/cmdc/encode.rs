@@ -66,8 +66,7 @@ impl CmdcCodec {
             if i > 0 {
                 data.push(b',');
             }
-            // Use reference instead of clone for best performrance, but might be risky
-            data.extend(&field.data);
+            data.extend(field.data);
             // data.extend(field.data.clone());
         }
         data.push(b']');
@@ -95,10 +94,10 @@ mod tests {
                     ext_version: 2,
                 },
                 fields: vec![
-                    Field::raw("1".as_bytes().to_vec()),
-                    Field::raw("20".as_bytes().to_vec()),
-                    Field::raw("(5:three)".as_bytes().to_vec()),
-                    Field::raw("400000".as_bytes().to_vec()),
+                    Field::raw("1".as_bytes()),
+                    Field::raw("20".as_bytes()),
+                    Field::raw("(5:three)".as_bytes()),
+                    Field::raw("400000".as_bytes()),
                 ],
             }],
         };
