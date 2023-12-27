@@ -1,3 +1,6 @@
+use crate::codec::Codec;
+use core::clone::Clone;
+
 #[derive(Debug, Clone)]
 pub struct Containers<'a> {
     pub containers: Vec<Container<'a>>,
@@ -19,27 +22,26 @@ pub struct Header {
     pub ext_version: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Field<'a> {
     // pub data: Vec<u8>,
     pub data: &'a [u8],
     pub field_type: FieldType,
     pub value: Option<Value<'a>>,
+    pub codec: Option<Box<dyn Codec>>,
     pub is_multi: bool,
     pub is_container: bool,
 }
 
-// pub trait Value: std::fmt::Debug {
-//     fn to_string(&self) -> String;
-//     fn to_int32(&self) -> i32;
-//     fn to_uint32(&self) -> u32;
-//     fn to_bool(&self) -> bool;
-// }
 #[derive(Debug, Clone)]
 pub enum Value<'a> {
     Struct(Containers<'a>),
     String(String),
+    Int8(i8),
+    Int16(i16),
     Int32(i32),
+    UInt8(u8),
+    UInt16(u16),
     UInt32(u32),
     Bool(bool),
     Decimal(bigdecimal::BigDecimal),
@@ -50,7 +52,11 @@ pub enum FieldType {
     Unknown,
     Struct,
     String,
+    Int8,
+    Int16,
     Int32,
+    UInt8,
+    UInt16,
     UInt32,
     Bool,
     Decimal,
@@ -64,6 +70,24 @@ impl<'a> Field<'a> {
             value: None,
             is_multi: false,
             is_container: false,
+            codec: None,
+        }
+    }
+
+    pub fn set_type(&mut self, field_type: FieldType) {
+        self.field_type = field_type;
+    }
+}
+
+impl<'a> Clone for Field<'a> {
+    fn clone(&self) -> Self {
+        Field {
+            data: self.data,
+            field_type: self.field_type.clone(),
+            value: self.value.clone(),
+            codec: self.codec.as_ref().map(|codec| codec.clone_box()),
+            is_multi: self.is_multi,
+            is_container: self.is_container,
         }
     }
 }
@@ -79,6 +103,7 @@ mod tests {
             data: field_data,
             field_type: FieldType::String,
             value: Some(Value::String("foobar".to_string())),
+            codec: None,
             is_multi: false,
             is_container: false,
         };
@@ -95,6 +120,7 @@ mod tests {
             data: field_data,
             field_type: FieldType::Int32,
             value: Some(Value::Int32(-20)),
+            codec: None,
             is_multi: false,
             is_container: false,
         };
@@ -128,6 +154,7 @@ mod tests {
                     ],
                 }],
             })),
+            codec: None,
             is_multi: false,
             is_container: false,
         };

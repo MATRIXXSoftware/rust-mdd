@@ -190,6 +190,7 @@ impl CmdcCodec {
                             data: field_data,
                             field_type: FieldType::Unknown,
                             value: None,
+                            codec: None,
                             is_multi,
                             is_container,
                         };
@@ -222,6 +223,7 @@ impl CmdcCodec {
             data: field_data,
             field_type: FieldType::Unknown,
             value: None,
+            codec: None,
             is_multi,
             is_container,
         };
