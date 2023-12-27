@@ -7,6 +7,8 @@ use crate::mdd::Field;
 use crate::mdd::Value;
 use std::error::Error;
 
+static CMDC_CODEC: CmdcCodec = CmdcCodec {};
+
 #[derive(Debug, Clone)]
 pub struct CmdcCodec {}
 
@@ -28,9 +30,9 @@ impl Codec for CmdcCodec {
         todo!()
     }
 
-    fn clone_box(&self) -> Box<dyn Codec> {
-        Box::new(self.clone())
-    }
+    // fn clone_box(&self) -> Box<dyn Codec> {
+    //     Box::new(self.clone())
+    // }
 }
 
 #[cfg(test)]

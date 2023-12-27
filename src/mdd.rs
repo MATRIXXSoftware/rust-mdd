@@ -29,7 +29,8 @@ pub struct Field<'a> {
     pub data: &'a [u8],
     pub field_type: FieldType,
     pub value: Option<Value<'a>>,
-    pub codec: Option<Box<dyn Codec>>,
+    // pub codec: Option<Box<dyn Codec>>,
+    pub codec: Option<&'static dyn Codec>,
     pub is_multi: bool,
     pub is_container: bool,
 }
@@ -109,7 +110,7 @@ impl<'a> Clone for Field<'a> {
             data: self.data,
             field_type: self.field_type.clone(),
             value: self.value.clone(),
-            codec: self.codec.as_ref().map(|codec| codec.clone_box()),
+            codec: self.codec,
             is_multi: self.is_multi,
             is_container: self.is_container,
         }
