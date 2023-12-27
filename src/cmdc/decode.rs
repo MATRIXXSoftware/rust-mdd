@@ -38,7 +38,7 @@ impl CmdcCodec {
         Ok((Container { header, fields }, idx))
     }
 
-    fn decode_header(&self, data: &[u8]) -> Result<(Header, usize), Box<dyn Error>> {
+    fn decode_header<'a>(&self, data: &'a [u8]) -> Result<(Header, usize), Box<dyn Error>> {
         let mut header = Header {
             version: 0,
             total_field: 0,
