@@ -1,5 +1,6 @@
 use crate::codec::Codec;
 use core::clone::Clone;
+use std::error::Error;
 
 #[derive(Debug, Clone)]
 pub struct Containers<'a> {
@@ -74,8 +75,31 @@ impl<'a> Field<'a> {
         }
     }
 
-    pub fn set_type(&mut self, field_type: FieldType) {
-        self.field_type = field_type;
+    // pub fn get_value(&mut self) -> &Option<Value<'a>> {
+    //     if self.value.is_none() {
+    //         let value = self.codec.as_ref().and_then(|codec| {
+    //             let value = codec.decode_field(self).unwrap();
+    //             Some(value)
+    //         });
+    //         self.value = value;
+    //     }
+    //     &self.value
+    // }
+
+    pub fn get_value(&mut self) -> Result<&Value<'a>, Box<dyn Error>> {
+        if self.value.is_none() {
+            let codec = match self.codec.as_ref() {
+                Some(codec) => codec,
+                None => return Err("No codec".into()),
+            };
+
+            let value = codec.decode_field(self)?;
+            self.value = Some(value);
+        }
+        match &self.value {
+            Some(v) => Ok(v),
+            None => Err("No value".into()),
+        }
     }
 }
 

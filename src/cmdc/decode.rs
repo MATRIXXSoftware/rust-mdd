@@ -190,7 +190,7 @@ impl CmdcCodec {
                             data: field_data,
                             field_type: FieldType::Unknown,
                             value: None,
-                            codec: None,
+                            codec: Some(Box::new(self.clone())), // this hurts performance slightly
                             is_multi,
                             is_container,
                         };
@@ -223,7 +223,7 @@ impl CmdcCodec {
             data: field_data,
             field_type: FieldType::Unknown,
             value: None,
-            codec: None,
+            codec: Some(Box::new(self.clone())), // this hurts performance slightly
             is_multi,
             is_container,
         };

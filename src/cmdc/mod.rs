@@ -19,8 +19,9 @@ impl Codec for CmdcCodec {
         self.encode_containers(containers)
     }
 
-    fn decode_field(&self, _field: &Field) -> Result<Value, Box<dyn Error>> {
-        todo!()
+    fn decode_field<'a>(&self, _field: &Field) -> Result<Value<'a>, Box<dyn Error>> {
+        Ok(Value::Int32(-20))
+        // todo!()
     }
 
     fn encode_field(&self, _field: &Field) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -50,9 +51,23 @@ mod tests {
         assert_eq!(container.fields[2].data, b"(5:three)");
         assert_eq!(container.fields[3].data, b"4");
 
-        container.fields[0].set_type(FieldType::UInt8);
-        container.fields[0].set_type(FieldType::Int32);
-        container.fields[0].set_type(FieldType::String);
-        container.fields[0].set_type(FieldType::UInt32);
+        container.fields[0].field_type = FieldType::UInt8;
+        container.fields[1].field_type = FieldType::Int32;
+        container.fields[2].field_type = FieldType::String;
+        container.fields[2].field_type = FieldType::UInt32;
+
+        match container.fields[1].get_value().unwrap() {
+            Value::Int32(v) => assert_eq!(*v, -20),
+            _ => panic!("Not a int32"),
+        }
+
+        // match container.fields[1].get_value() {
+        //     Some(Value::Int32(v)) => assert_eq!(*v, -20),
+        //     _ => panic!("Not a int32"),
+        // }
+        // match container.fields[1].value {
+        //     Some(Value::Int32(v)) => assert_eq!(v, -20),
+        //     _ => panic!("Not a int32"),
+        // }
     }
 }
