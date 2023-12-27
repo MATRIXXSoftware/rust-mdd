@@ -8,7 +8,7 @@ use std::error::Error;
 pub struct CmdcCodec {}
 
 impl Codec for CmdcCodec {
-    fn decode(&self, data: &[u8]) -> Result<Containers, Box<dyn Error>> {
+    fn decode<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
         self.decode_containers(data)
     }
 
