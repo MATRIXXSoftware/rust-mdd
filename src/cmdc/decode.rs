@@ -1,4 +1,5 @@
 use super::CmdcCodec;
+use crate::cmdc::CMDC_CODEC;
 use crate::mdd::Container;
 use crate::mdd::Containers;
 use crate::mdd::Field;
@@ -190,8 +191,10 @@ impl CmdcCodec {
                             data: field_data,
                             field_type: FieldType::Unknown,
                             value: None,
+                            codec: Some(&CMDC_CODEC),
                             is_multi,
                             is_container,
+                            is_null: field_data.len() == 0,
                         };
                         fields.push(field);
                         is_multi = false;
@@ -222,15 +225,17 @@ impl CmdcCodec {
             data: field_data,
             field_type: FieldType::Unknown,
             value: None,
+            codec: Some(&CMDC_CODEC),
             is_multi,
             is_container,
+            is_null: field_data.len() == 0,
         };
         fields.push(field);
 
         Ok((fields, idx))
     }
 
-    fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
+    pub fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
         let str_data = std::str::from_utf8(data)?;
         str_data
             .parse::<i32>()
@@ -244,10 +249,10 @@ mod tests {
 
     #[test]
     fn test_decode_single_container1() {
-        let codec = CmdcCodec {};
+        // let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]";
 
-        let result = codec.decode_containers(data);
+        let result = CMDC_CODEC.decode_containers(data);
         match result {
             Ok(containers) => {
                 let container = &containers.containers[0];
