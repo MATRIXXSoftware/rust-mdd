@@ -78,11 +78,10 @@ impl CmdcCodec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cmdc::CMDC_CODEC;
 
     #[test]
     fn test_encode_container() {
-        let codec = CmdcCodec {};
-
         let containers = Containers {
             containers: vec![Container {
                 header: Header {
@@ -102,7 +101,7 @@ mod tests {
             }],
         };
 
-        let encoded = codec.encode_containers(&containers).unwrap();
+        let encoded = CMDC_CODEC.encode_containers(&containers).unwrap();
         assert_eq!(encoded, b"<1,18,0,-6,5222,2>[1,20,(5:three),400000]");
     }
 }

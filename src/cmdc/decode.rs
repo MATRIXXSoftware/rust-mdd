@@ -249,7 +249,6 @@ mod tests {
 
     #[test]
     fn test_decode_single_container1() {
-        // let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]";
 
         let result = CMDC_CODEC.decode_containers(data);
@@ -277,10 +276,9 @@ mod tests {
 
     #[test]
     fn test_decode_single_container2() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[,(6:value2),3,2021-09-07T08:00:25.000001Z,2021-10-31,09:13:02.667997Z,88,5.5,]";
 
-        let result = codec.decode_containers(data);
+        let result = CMDC_CODEC.decode_containers(data);
         match result {
             Ok(containers) => {
                 let container = &containers.containers[0];
@@ -310,10 +308,9 @@ mod tests {
 
     #[test]
     fn test_decode_multi_containers() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4]<1,5,0,-7,5222,2>[,2,(3:def),4]";
 
-        let result = codec.decode_containers(data);
+        let result = CMDC_CODEC.decode_containers(data);
         match result {
             Ok(containers) => {
                 assert_eq!(containers.containers.len(), 2);
@@ -353,9 +350,8 @@ mod tests {
 
     #[test]
     fn test_decode_nested_containers() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,<1,2,0,452,5222,2>[100],4]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
         let container = &containers.containers[0];
 
         assert_eq!(container.fields.len(), 4);
@@ -372,9 +368,8 @@ mod tests {
 
     #[test]
     fn test_list_integer_value() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[0,{1,2,3},,,300,{4,5}]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
         let container = &containers.containers[0];
 
         assert_eq!(container.fields.len(), 6);
@@ -395,9 +390,8 @@ mod tests {
 
     #[test]
     fn test_decode_empty_body() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
 
         assert!(containers.containers.len() == 1);
         let container = &containers.containers[0];
@@ -406,9 +400,8 @@ mod tests {
 
     #[test]
     fn test_zero_len_string_field() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(0:),3,4]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
 
         let container = &containers.containers[0];
         assert_eq!(container.fields[0].data, b"1");
@@ -419,9 +412,8 @@ mod tests {
 
     #[test]
     fn test_empty_string_field() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(),3,4]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
 
         let container = &containers.containers[0];
         assert_eq!(container.fields[0].data, b"1");
@@ -432,9 +424,8 @@ mod tests {
 
     #[test]
     fn test_unicode_string_field() {
-        let codec = CmdcCodec {};
         let data = "<1,18,0,-6,5222,2>[1,(6:富爸),3,4]".as_bytes();
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
 
         let container = &containers.containers[0];
         assert_eq!(container.fields[0].data, b"1");
@@ -445,9 +436,8 @@ mod tests {
 
     #[test]
     fn test_decode_field_with_reserved_char() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,2,(10:v[<ue(obar),4,,6]";
-        let containers = codec.decode_containers(data).unwrap();
+        let containers = CMDC_CODEC.decode_containers(data).unwrap();
         let container = &containers.containers[0];
 
         assert_eq!(container.fields.len(), 6);
@@ -461,17 +451,15 @@ mod tests {
 
     #[test]
     fn test_invalid_header1() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2,1>";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC header, 6 fields expected");
     }
 
     #[test]
     fn test_invalid_header2() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222[1,20,300,4]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Invalid cMDC character '[' in header, numeric expected"
@@ -480,17 +468,15 @@ mod tests {
 
     #[test]
     fn test_invalid_header3() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC header, missing '>'")
     }
 
     #[test]
     fn test_invalid_header4() {
-        let codec = CmdcCodec {};
         let data = b"1,18,0,-6,5222,2>[]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Invalid cMDC header, first character must be '<'"
@@ -499,9 +485,8 @@ mod tests {
 
     #[test]
     fn test_invalid_header5() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,1-6,5222,2>[]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Invalid cMDC header, Invalid digit found in '1-6'"
@@ -510,25 +495,22 @@ mod tests {
 
     #[test]
     fn test_invalid_body1() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,20,300,4";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, no end of body");
     }
 
     #[test]
     fn test_invalid_body2() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, no body");
     }
 
     #[test]
     fn test_invalid_body3() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>1,2,3]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Invalid cMDC body, first character must be '['"
@@ -537,9 +519,8 @@ mod tests {
 
     #[test]
     fn test_invalid_body4() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(abc:foo),3,4]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(
             err.to_string(),
             "Invalid character 'a', numeric expected for string length"
@@ -548,25 +529,22 @@ mod tests {
 
     #[test]
     fn test_invalid_body5() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(5:foo),3,4]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
 
     #[test]
     fn test_invalid_body6() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(5:foobar),3,4]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
 
     #[test]
     fn test_invalid_body7() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,(5:fooba:),3,4]";
-        let err = codec.decode_containers(data).unwrap_err();
+        let err = CMDC_CODEC.decode_containers(data).unwrap_err();
         assert_eq!(err.to_string(), "Invalid cMDC body, mismatch string length");
     }
 }

@@ -9,7 +9,7 @@ use crate::mdd::FieldType;
 use crate::mdd::Value;
 use std::error::Error;
 
-static CMDC_CODEC: CmdcCodec = CmdcCodec {};
+pub static CMDC_CODEC: CmdcCodec = CmdcCodec {};
 
 #[derive(Debug, Clone)]
 pub struct CmdcCodec {}
@@ -74,9 +74,8 @@ mod tests {
 
     #[test]
     fn test_decode_example() {
-        let codec = CmdcCodec {};
         let data = b"<1,18,0,-6,5222,2>[1,-20,(5:three),4,,<1,2,0,452,5222,2>[100]]";
-        let mut containers = codec.decode_containers(data).unwrap();
+        let mut containers = CMDC_CODEC.decode_containers(data).unwrap();
         assert_eq!(containers.containers.len(), 1);
 
         let container = &mut containers.containers[0];
