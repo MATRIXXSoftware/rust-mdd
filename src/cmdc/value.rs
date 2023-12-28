@@ -1,8 +1,13 @@
 use crate::cmdc::CmdcCodec;
+use crate::cmdc::Containers;
 use core::str::from_utf8;
 use std::error::Error;
 
 impl CmdcCodec {
+    pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
+        self.decode_containers(data)
+    }
+
     pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Box<dyn Error>> {
         if data.is_empty() {
             return Ok("");

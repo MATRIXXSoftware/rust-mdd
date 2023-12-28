@@ -25,11 +25,9 @@ pub struct Header {
 
 #[derive(Debug, Clone)]
 pub struct Field<'a> {
-    // pub data: Vec<u8>,
     pub data: &'a [u8],
     pub field_type: FieldType,
     pub value: Option<Value<'a>>,
-    // pub codec: Option<Box<dyn Codec>>,
     pub codec: Option<&'static dyn Codec>,
     pub is_multi: bool,
     pub is_container: bool,
@@ -82,17 +80,6 @@ impl<'a> Field<'a> {
         }
     }
 
-    // pub fn get_value(&mut self) -> &Option<Value<'a>> {
-    //     if self.value.is_none() {
-    //         let value = self.codec.as_ref().and_then(|codec| {
-    //             let value = codec.decode_field(self).unwrap();
-    //             Some(value)
-    //         });
-    //         self.value = value;
-    //     }
-    //     &self.value
-    // }
-    //
     pub fn decode_value(&mut self) -> Result<Option<&Value<'a>>, Box<dyn Error>> {
         if self.is_null {
             return Ok(None);
@@ -127,18 +114,80 @@ impl<'a> Field<'a> {
     }
 }
 
-// impl<'a> Clone for Field<'a> {
-//     fn clone(&self) -> Self {
-//         Field {
-//             data: self.data,
-//             field_type: self.field_type.clone(),
-//             value: self.value.clone(),
-//             codec: self.codec,
-//             is_multi: self.is_multi,
-//             is_container: self.is_container,
-//         }
-//     }
-// }
+impl<'a> Value<'a> {
+    pub fn as_struct(&self) -> Option<&Containers<'a>> {
+        match self {
+            Value::Struct(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn as_string(&self) -> Option<&str> {
+        match self {
+            Value::String(v) => Some(v),
+            _ => None,
+        }
+    }
+    pub fn as_int8(&self) -> Option<i8> {
+        match self {
+            Value::Int8(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_int16(&self) -> Option<i16> {
+        match self {
+            Value::Int16(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_int32(&self) -> Option<i32> {
+        match self {
+            Value::Int32(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_int64(&self) -> Option<i64> {
+        match self {
+            Value::Int64(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_uint8(&self) -> Option<u8> {
+        match self {
+            Value::UInt8(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_uint16(&self) -> Option<u16> {
+        match self {
+            Value::UInt16(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_uint32(&self) -> Option<u32> {
+        match self {
+            Value::UInt32(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_uint64(&self) -> Option<u64> {
+        match self {
+            Value::UInt64(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_bool(&self) -> Option<bool> {
+        match self {
+            Value::Bool(v) => Some(*v),
+            _ => None,
+        }
+    }
+    pub fn as_decimal(&self) -> Option<&bigdecimal::BigDecimal> {
+        match self {
+            Value::Decimal(v) => Some(v),
+            _ => None,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
