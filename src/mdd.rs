@@ -23,7 +23,7 @@ pub struct Header {
     pub ext_version: u16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Field<'a> {
     // pub data: Vec<u8>,
     pub data: &'a [u8],
@@ -42,9 +42,11 @@ pub enum Value<'a> {
     Int8(i8),
     Int16(i16),
     Int32(i32),
+    Int64(i64),
     UInt8(u8),
     UInt16(u16),
     UInt32(u32),
+    UInt64(u64),
     Bool(bool),
     Decimal(bigdecimal::BigDecimal),
 }
@@ -57,9 +59,11 @@ pub enum FieldType {
     Int8,
     Int16,
     Int32,
+    Int64,
     UInt8,
     UInt16,
     UInt32,
+    UInt64,
     Bool,
     Decimal,
 }
@@ -104,18 +108,18 @@ impl<'a> Field<'a> {
     }
 }
 
-impl<'a> Clone for Field<'a> {
-    fn clone(&self) -> Self {
-        Field {
-            data: self.data,
-            field_type: self.field_type.clone(),
-            value: self.value.clone(),
-            codec: self.codec,
-            is_multi: self.is_multi,
-            is_container: self.is_container,
-        }
-    }
-}
+// impl<'a> Clone for Field<'a> {
+//     fn clone(&self) -> Self {
+//         Field {
+//             data: self.data,
+//             field_type: self.field_type.clone(),
+//             value: self.value.clone(),
+//             codec: self.codec,
+//             is_multi: self.is_multi,
+//             is_container: self.is_container,
+//         }
+//     }
+// }
 
 #[cfg(test)]
 mod tests {

@@ -1,9 +1,11 @@
 pub mod decode;
 pub mod encode;
+pub mod value;
 
 use crate::codec::Codec;
 use crate::mdd::Containers;
 use crate::mdd::Field;
+use crate::mdd::FieldType;
 use crate::mdd::Value;
 use std::error::Error;
 
@@ -21,9 +23,19 @@ impl Codec for CmdcCodec {
         self.encode_containers(containers)
     }
 
-    fn decode_field<'a>(&self, _field: &Field) -> Result<Value<'a>, Box<dyn Error>> {
-        Ok(Value::Int32(-20))
-        // todo!()
+    fn decode_field<'a>(&self, field: &Field) -> Result<Value<'a>, Box<dyn Error>> {
+        match field.field_type {
+            FieldType::String => Ok(Value::String(self.decode_string(field.data)?.to_string())),
+            FieldType::Int8 => Ok(Value::Int8(self.decode_int8(field.data)?)),
+            FieldType::Int16 => Ok(Value::Int16(self.decode_int16(field.data)?)),
+            FieldType::Int32 => Ok(Value::Int32(self.decode_int32(field.data)?)),
+            FieldType::Int64 => Ok(Value::Int64(self.decode_int64(field.data)?)),
+            FieldType::UInt8 => Ok(Value::UInt8(self.decode_uint8(field.data)?)),
+            FieldType::UInt16 => Ok(Value::UInt16(self.decode_uint16(field.data)?)),
+            FieldType::UInt32 => Ok(Value::UInt32(self.decode_uint32(field.data)?)),
+            FieldType::UInt64 => Ok(Value::UInt64(self.decode_uint64(field.data)?)),
+            _ => todo!(),
+        }
     }
 
     fn encode_field(&self, _field: &Field) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -56,20 +68,26 @@ mod tests {
         container.fields[0].field_type = FieldType::UInt8;
         container.fields[1].field_type = FieldType::Int32;
         container.fields[2].field_type = FieldType::String;
-        container.fields[2].field_type = FieldType::UInt32;
+        container.fields[3].field_type = FieldType::UInt32;
+
+        match container.fields[0].get_value().unwrap() {
+            Value::UInt8(v) => assert_eq!(*v, 1),
+            _ => panic!("Not a UInt8"),
+        }
 
         match container.fields[1].get_value().unwrap() {
             Value::Int32(v) => assert_eq!(*v, -20),
             _ => panic!("Not a int32"),
         }
 
-        // match container.fields[1].get_value() {
-        //     Some(Value::Int32(v)) => assert_eq!(*v, -20),
-        //     _ => panic!("Not a int32"),
-        // }
-        // match container.fields[1].value {
-        //     Some(Value::Int32(v)) => assert_eq!(v, -20),
-        //     _ => panic!("Not a int32"),
-        // }
+        match container.fields[2].get_value().unwrap() {
+            Value::String(v) => assert_eq!(v, "three"),
+            _ => panic!("Not a string"),
+        }
+
+        match container.fields[3].get_value().unwrap() {
+            Value::UInt32(v) => assert_eq!(*v, 4),
+            _ => panic!("Not a UInt32"),
+        }
     }
 }

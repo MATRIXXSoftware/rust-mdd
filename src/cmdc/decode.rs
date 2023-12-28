@@ -233,7 +233,7 @@ impl CmdcCodec {
         Ok((fields, idx))
     }
 
-    fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
+    pub fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
         let str_data = std::str::from_utf8(data)?;
         str_data
             .parse::<i32>()
