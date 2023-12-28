@@ -194,6 +194,7 @@ impl CmdcCodec {
                             codec: Some(&CMDC_CODEC),
                             is_multi,
                             is_container,
+                            is_null: field_data.len() == 0,
                         };
                         fields.push(field);
                         is_multi = false;
@@ -227,6 +228,7 @@ impl CmdcCodec {
             codec: Some(&CMDC_CODEC),
             is_multi,
             is_container,
+            is_null: field_data.len() == 0,
         };
         fields.push(field);
 

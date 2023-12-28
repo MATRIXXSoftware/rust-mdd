@@ -33,6 +33,7 @@ pub struct Field<'a> {
     pub codec: Option<&'static dyn Codec>,
     pub is_multi: bool,
     pub is_container: bool,
+    pub is_null: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -74,9 +75,10 @@ impl<'a> Field<'a> {
             data,
             field_type: FieldType::Unknown,
             value: None,
+            codec: None,
             is_multi: false,
             is_container: false,
-            codec: None,
+            is_null: false,
         }
     }
 
@@ -90,8 +92,11 @@ impl<'a> Field<'a> {
     //     }
     //     &self.value
     // }
-
-    pub fn get_value(&mut self) -> Result<&Value<'a>, Box<dyn Error>> {
+    //
+    pub fn decode_value(&mut self) -> Result<Option<&Value<'a>>, Box<dyn Error>> {
+        if self.is_null {
+            return Ok(None);
+        }
         if self.value.is_none() {
             let codec = match self.codec.as_ref() {
                 Some(codec) => codec,
@@ -101,10 +106,24 @@ impl<'a> Field<'a> {
             let value = codec.decode_field(self)?;
             self.value = Some(value);
         }
-        match &self.value {
-            Some(v) => Ok(v),
-            None => Err("No value".into()),
+        Ok(self.value.as_ref())
+    }
+
+    pub fn get_value(&self) -> Result<Option<&Value<'a>>, Box<dyn Error>> {
+        if self.is_null {
+            return Ok(None);
         }
+        match &self.value {
+            Some(ref v) => Ok(Some(v)),
+            None => Err("Field not decoded yet".into()),
+        }
+    }
+
+    pub fn value(&self) -> Option<&Value<'a>> {
+        if self.is_null {
+            return None;
+        }
+        self.value.as_ref()
     }
 }
 
@@ -135,6 +154,7 @@ mod tests {
             codec: None,
             is_multi: false,
             is_container: false,
+            is_null: false,
         };
         match field.value {
             Some(Value::String(v)) => assert_eq!(v, "foobar"),
@@ -152,6 +172,7 @@ mod tests {
             codec: None,
             is_multi: false,
             is_container: false,
+            is_null: false,
         };
         match field.value {
             Some(Value::Int32(v)) => assert_eq!(v, -20),
@@ -186,6 +207,7 @@ mod tests {
             codec: None,
             is_multi: false,
             is_container: false,
+            is_null: false,
         };
         match field.value {
             Some(Value::Struct(v)) => {
