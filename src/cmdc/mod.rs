@@ -8,6 +8,7 @@ use crate::mdd::Field;
 use crate::mdd::FieldType;
 use crate::mdd::Value;
 use std::error::Error;
+use std::io::Cursor;
 
 pub static CMDC_CODEC: CmdcCodec = CmdcCodec {};
 
@@ -20,12 +21,14 @@ impl Codec for CmdcCodec {
     }
 
     fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.encode_containers(containers)
+        let mut buffer = Cursor::new(Vec::with_capacity(64));
+        self.encode_containers(containers, &mut buffer)?;
+        Ok(buffer.into_inner())
     }
 
     fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Box<dyn Error>> {
         match field.field_type {
-            FieldType::Struct => Ok(Value::Struct(self.decode_containers(field.data)?)),
+            FieldType::Struct => Ok(Value::Struct(self.decode_struct(field.data)?)),
             FieldType::String => Ok(Value::String(self.decode_string(field.data)?.to_string())),
             FieldType::Int8 => Ok(Value::Int8(self.decode_int8(field.data)?)),
             FieldType::Int16 => Ok(Value::Int16(self.decode_int16(field.data)?)),
@@ -52,7 +55,7 @@ impl Codec for CmdcCodec {
         let field_value = field.get_value()?.unwrap();
 
         match field.field_type {
-            FieldType::Struct => Ok(self.encode_containers(field_value.as_struct().unwrap())?),
+            FieldType::Struct => Ok(self.encode_struct(field_value.as_struct().unwrap())?),
             FieldType::String => Ok(self.encode_string(field_value.as_string().unwrap())?),
             FieldType::Int8 => Ok(self.encode_int8(field_value.as_int8().unwrap())?),
             FieldType::Int16 => Ok(self.encode_int16(field_value.as_int16().unwrap())?),

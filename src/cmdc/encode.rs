@@ -4,42 +4,46 @@ use crate::mdd::Containers;
 use crate::mdd::Field;
 use crate::mdd::Header;
 use std::error::Error;
+use std::io::Cursor;
 use std::io::Write;
 
 impl CmdcCodec {
-    pub fn encode_containers(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut data = Vec::new();
-
+    pub fn encode_containers(
+        &self,
+        containers: &Containers,
+        buffer: &mut Cursor<Vec<u8>>,
+    ) -> Result<(), Box<dyn Error>> {
         for container in &containers.containers {
-            let container_data = self.encode_container(container)?;
-            data.extend(container_data);
+            self.encode_container(container, buffer)?;
         }
 
-        Ok(data)
+        Ok(())
     }
 
-    fn encode_container(&self, container: &Container) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut data = Vec::new();
-
+    fn encode_container(
+        &self,
+        container: &Container,
+        buffer: &mut Cursor<Vec<u8>>,
+    ) -> Result<(), Box<dyn Error>> {
         // Encode Header
-        let header_data = self.encode_header(&container.header)?;
-        data.extend(header_data);
-
+        self.encode_header(&container.header, buffer)?;
         // Encode Body
-        let body_data = self.encode_body(&container.fields)?;
-        data.extend(body_data);
+        self.encode_body(&container.fields, buffer)?;
 
-        Ok(data)
+        Ok(())
     }
 
-    fn encode_header(&self, header: &Header) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn encode_header(
+        &self,
+        header: &Header,
+        buffer: &mut Cursor<Vec<u8>>,
+    ) -> Result<(), Box<dyn Error>> {
         // Predefine the capacity of the vector to avoid reallocation
-        let estimated_size = 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
-        let mut data = Vec::with_capacity(estimated_size);
-        // let mut data = Vec::new();
+        // let estimated_size = 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
+        // let mut data = Vec::with_capacity(estimated_size);
 
         write!(
-            data,
+            buffer,
             "<{},{},{},{},{},{}>",
             header.version,
             header.total_field,
@@ -49,29 +53,32 @@ impl CmdcCodec {
             header.ext_version
         )?;
 
-        Ok(data)
+        Ok(())
     }
 
-    fn encode_body(&self, fields: &[Field]) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn encode_body(
+        &self,
+        fields: &[Field],
+        buffer: &mut Cursor<Vec<u8>>,
+    ) -> Result<(), Box<dyn Error>> {
         // Predefine the capacity of the vector to avoid reallocation
-        let mut estimated_len = fields.len() + 2;
-        for field in fields.iter() {
-            estimated_len += field.data.len();
-        }
-        let mut data = Vec::with_capacity(estimated_len);
-        // let mut data = Vec::new();
+        // let mut estimated_len = fields.len() + 2;
+        // for field in fields.iter() {
+        //     estimated_len += field.data.len();
+        // }
+        // let mut data = Vec::with_capacity(estimated_len);
 
-        data.push(b'[');
+        buffer.write_all(b"[")?;
         for (i, field) in fields.iter().enumerate() {
             if i > 0 {
-                data.push(b',');
+                buffer.write_all(b",")?;
             }
-            data.extend(field.data);
-            // data.extend(field.data.clone());
+            buffer.write_all(field.data)?;
         }
-        data.push(b']');
 
-        Ok(data)
+        buffer.write_all(b"]")?;
+
+        Ok(())
     }
 }
 
@@ -101,7 +108,12 @@ mod tests {
             }],
         };
 
-        let encoded = CMDC_CODEC.encode_containers(&containers).unwrap();
+        let mut buffer = Cursor::new(Vec::new());
+        CMDC_CODEC
+            .encode_containers(&containers, &mut buffer)
+            .unwrap();
+
+        let encoded = buffer.into_inner();
         assert_eq!(encoded, b"<1,18,0,-6,5222,2>[1,20,(5:three),400000]");
     }
 }

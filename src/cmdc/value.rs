@@ -2,6 +2,7 @@ use crate::cmdc::CmdcCodec;
 use crate::cmdc::Containers;
 use core::str::from_utf8;
 use std::error::Error;
+use std::io::Cursor;
 
 impl CmdcCodec {
     pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
@@ -9,7 +10,10 @@ impl CmdcCodec {
     }
 
     pub fn encode_struct(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.encode_containers(containers)
+        // self.encode_containers(containers)
+        let mut buffer = Cursor::new(Vec::with_capacity(64));
+        self.encode_containers(containers, &mut buffer)?;
+        Ok(buffer.into_inner())
     }
 
     pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Box<dyn Error>> {
