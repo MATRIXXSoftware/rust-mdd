@@ -1,15 +1,16 @@
 use crate::cmdc::CmdcCodec;
 use crate::cmdc::Containers;
+use crate::codec::Codec;
 use core::str::from_utf8;
 use std::error::Error;
 
 impl CmdcCodec {
     pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
-        self.decode_containers(data)
+        self.decode(data)
     }
 
     pub fn encode_struct(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.encode_containers(containers)
+        self.encode(containers)
     }
 
     pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Box<dyn Error>> {
