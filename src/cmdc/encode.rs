@@ -10,38 +10,48 @@ use std::io::Write;
 impl CmdcCodec {
     pub fn encode_containers(
         &self,
-        containers: &Containers,
         buffer: &mut Cursor<Vec<u8>>,
+        containers: &Containers,
     ) -> Result<(), Box<dyn Error>> {
         for container in &containers.containers {
-            self.encode_container(container, buffer)?;
+            self.encode_container(buffer, container)?;
         }
 
         Ok(())
     }
 
+    pub fn get_containers_len(&self, containers: &Containers) -> usize {
+        let mut len = 0;
+        for container in &containers.containers {
+            len += self.get_container_len(container);
+        }
+        len
+    }
+
     fn encode_container(
         &self,
-        container: &Container,
         buffer: &mut Cursor<Vec<u8>>,
+        container: &Container,
     ) -> Result<(), Box<dyn Error>> {
-        // Encode Header
-        self.encode_header(&container.header, buffer)?;
-        // Encode Body
-        self.encode_body(&container.fields, buffer)?;
+        self.encode_header(buffer, &container.header)?;
+        self.encode_body(buffer, &container.fields)?;
 
         Ok(())
     }
 
+    #[inline]
+    fn get_container_len(&self, container: &Container) -> usize {
+        let mut len = self.get_header_len(&container.header);
+        len += self.get_body_len(&container.fields);
+
+        len
+    }
+
     fn encode_header(
         &self,
-        header: &Header,
         buffer: &mut Cursor<Vec<u8>>,
+        header: &Header,
     ) -> Result<(), Box<dyn Error>> {
-        // Predefine the capacity of the vector to avoid reallocation
-        // let estimated_size = 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
-        // let mut data = Vec::with_capacity(estimated_size);
-
         write!(
             buffer,
             "<{},{},{},{},{},{}>",
@@ -56,18 +66,16 @@ impl CmdcCodec {
         Ok(())
     }
 
+    #[inline]
+    fn get_header_len(&self, _header: &Header) -> usize {
+        return 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
+    }
+
     fn encode_body(
         &self,
-        fields: &[Field],
         buffer: &mut Cursor<Vec<u8>>,
+        fields: &[Field],
     ) -> Result<(), Box<dyn Error>> {
-        // Predefine the capacity of the vector to avoid reallocation
-        // let mut estimated_len = fields.len() + 2;
-        // for field in fields.iter() {
-        //     estimated_len += field.data.len();
-        // }
-        // let mut data = Vec::with_capacity(estimated_len);
-
         buffer.write_all(b"[")?;
         for (i, field) in fields.iter().enumerate() {
             if i > 0 {
@@ -75,10 +83,18 @@ impl CmdcCodec {
             }
             buffer.write_all(field.data)?;
         }
-
         buffer.write_all(b"]")?;
 
         Ok(())
+    }
+
+    #[inline]
+    fn get_body_len(&self, fields: &[Field]) -> usize {
+        let mut len = 2;
+        for field in fields.iter() {
+            len += field.data.len() + 1;
+        }
+        len
     }
 }
 
@@ -110,7 +126,7 @@ mod tests {
 
         let mut buffer = Cursor::new(Vec::new());
         CMDC_CODEC
-            .encode_containers(&containers, &mut buffer)
+            .encode_containers(&mut buffer, &containers)
             .unwrap();
 
         let encoded = buffer.into_inner();

@@ -21,8 +21,9 @@ impl Codec for CmdcCodec {
     }
 
     fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        let mut buffer = Cursor::new(Vec::with_capacity(64));
-        self.encode_containers(containers, &mut buffer)?;
+        let vec = Vec::with_capacity(self.get_containers_len(containers));
+        let mut buffer = Cursor::new(vec);
+        self.encode_containers(&mut buffer, containers)?;
         Ok(buffer.into_inner())
     }
 
@@ -53,7 +54,6 @@ impl Codec for CmdcCodec {
         }
         // Encode field value
         let field_value = field.get_value()?.unwrap();
-
         match field.field_type {
             FieldType::Struct => Ok(self.encode_struct(field_value.as_struct().unwrap())?),
             FieldType::String => Ok(self.encode_string(field_value.as_string().unwrap())?),
