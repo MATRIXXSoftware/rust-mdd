@@ -8,7 +8,7 @@ use crate::mdd::Field;
 use crate::mdd::FieldType;
 use crate::mdd::Value;
 use std::error::Error;
-use std::io::Cursor;
+use std::io::BufWriter;
 
 pub static CMDC_CODEC: CmdcCodec = CmdcCodec {};
 
@@ -22,9 +22,9 @@ impl Codec for CmdcCodec {
 
     fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
         let vec = Vec::with_capacity(self.get_containers_len(containers));
-        let mut buffer = Cursor::new(vec);
+        let mut buffer = BufWriter::new(vec);
         self.encode_containers(&mut buffer, containers)?;
-        Ok(buffer.into_inner())
+        Ok(buffer.into_inner()?)
     }
 
     fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Box<dyn Error>> {

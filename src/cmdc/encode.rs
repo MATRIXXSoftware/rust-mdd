@@ -4,13 +4,12 @@ use crate::mdd::Containers;
 use crate::mdd::Field;
 use crate::mdd::Header;
 use std::error::Error;
-use std::io::Cursor;
 use std::io::Write;
 
 impl CmdcCodec {
-    pub fn encode_containers(
+    pub fn encode_containers<W: Write>(
         &self,
-        buffer: &mut Cursor<Vec<u8>>,
+        buffer: &mut W,
         containers: &Containers,
     ) -> Result<(), Box<dyn Error>> {
         for container in &containers.containers {
@@ -28,9 +27,9 @@ impl CmdcCodec {
         len
     }
 
-    fn encode_container(
+    fn encode_container<W: Write>(
         &self,
-        buffer: &mut Cursor<Vec<u8>>,
+        buffer: &mut W,
         container: &Container,
     ) -> Result<(), Box<dyn Error>> {
         self.encode_header(buffer, &container.header)?;
@@ -47,9 +46,9 @@ impl CmdcCodec {
         len
     }
 
-    fn encode_header(
+    fn encode_header<W: Write>(
         &self,
-        buffer: &mut Cursor<Vec<u8>>,
+        buffer: &mut W,
         header: &Header,
     ) -> Result<(), Box<dyn Error>> {
         write!(
@@ -71,9 +70,9 @@ impl CmdcCodec {
         return 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
     }
 
-    fn encode_body(
+    fn encode_body<W: Write>(
         &self,
-        buffer: &mut Cursor<Vec<u8>>,
+        buffer: &mut W,
         fields: &[Field],
     ) -> Result<(), Box<dyn Error>> {
         buffer.write_all(b"[")?;
@@ -102,6 +101,7 @@ impl CmdcCodec {
 mod tests {
     use super::*;
     use crate::cmdc::CMDC_CODEC;
+    use std::io::BufWriter;
 
     #[test]
     fn test_encode_container() {
@@ -124,12 +124,12 @@ mod tests {
             }],
         };
 
-        let mut buffer = Cursor::new(Vec::new());
+        let mut buffer = BufWriter::new(Vec::new());
         CMDC_CODEC
             .encode_containers(&mut buffer, &containers)
             .unwrap();
 
-        let encoded = buffer.into_inner();
+        let encoded = buffer.into_inner().unwrap();
         assert_eq!(encoded, b"<1,18,0,-6,5222,2>[1,20,(5:three),400000]");
     }
 }
