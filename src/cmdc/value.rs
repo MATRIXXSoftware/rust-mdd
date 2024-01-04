@@ -6,11 +6,11 @@ use std::error::Error;
 
 impl CmdcCodec {
     pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
-        self.decode(data)
+        Ok(self.decode(data)?)
     }
 
     pub fn encode_struct(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
-        self.encode(containers)
+        Ok(self.encode(containers)?)
     }
 
     pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Box<dyn Error>> {
@@ -25,6 +25,7 @@ impl CmdcCodec {
             if c == b':' {
                 let temp = &data[1..idx];
                 let len = Self::bytes_to_int(temp)? as usize;
+
                 if idx + 1 + len > data.len() {
                     return Err(format!("Invalid string length, {} is too long", len).into());
                 }

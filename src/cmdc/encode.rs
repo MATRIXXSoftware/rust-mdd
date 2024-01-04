@@ -1,9 +1,9 @@
 use super::CmdcCodec;
+use crate::error::Error;
 use crate::mdd::Container;
 use crate::mdd::Containers;
 use crate::mdd::Field;
 use crate::mdd::Header;
-use std::error::Error;
 use std::io::Write;
 
 impl CmdcCodec {
@@ -11,7 +11,7 @@ impl CmdcCodec {
         &self,
         buffer: &mut W,
         containers: &Containers,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         for container in &containers.containers {
             self.encode_container(buffer, container)?;
         }
@@ -31,7 +31,7 @@ impl CmdcCodec {
         &self,
         buffer: &mut W,
         container: &Container,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         self.encode_header(buffer, &container.header)?;
         self.encode_body(buffer, &container.fields)?;
 
@@ -46,11 +46,7 @@ impl CmdcCodec {
         len
     }
 
-    fn encode_header<W: Write>(
-        &self,
-        buffer: &mut W,
-        header: &Header,
-    ) -> Result<(), Box<dyn Error>> {
+    fn encode_header<W: Write>(&self, buffer: &mut W, header: &Header) -> Result<(), Error> {
         write!(
             buffer,
             "<{},{},{},{},{},{}>",
@@ -70,11 +66,7 @@ impl CmdcCodec {
         return 4 + 1 + 1 + 7 + 4 + 3 + 6 + 2;
     }
 
-    fn encode_body<W: Write>(
-        &self,
-        buffer: &mut W,
-        fields: &[Field],
-    ) -> Result<(), Box<dyn Error>> {
+    fn encode_body<W: Write>(&self, buffer: &mut W, fields: &[Field]) -> Result<(), Error> {
         buffer.write_all(b"[")?;
         for (i, field) in fields.iter().enumerate() {
             if i > 0 {

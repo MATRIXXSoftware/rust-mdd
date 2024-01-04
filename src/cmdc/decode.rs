@@ -1,14 +1,14 @@
 use super::CmdcCodec;
 use crate::cmdc::CMDC_CODEC;
+use crate::error::Error;
 use crate::mdd::Container;
 use crate::mdd::Containers;
 use crate::mdd::Field;
 use crate::mdd::FieldType;
 use crate::mdd::Header;
-use std::error::Error;
 
 impl CmdcCodec {
-    pub fn decode_containers<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
+    pub fn decode_containers<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Error> {
         let mut containers = Containers { containers: vec![] };
 
         let mut idx = 0;
@@ -21,10 +21,7 @@ impl CmdcCodec {
         Ok(containers)
     }
 
-    fn decode_container<'a>(
-        &self,
-        data: &'a [u8],
-    ) -> Result<(Container<'a>, usize), Box<dyn Error>> {
+    fn decode_container<'a>(&self, data: &'a [u8]) -> Result<(Container<'a>, usize), Error> {
         let mut idx = 0;
 
         // Decode Header
@@ -39,7 +36,7 @@ impl CmdcCodec {
         Ok((Container { header, fields }, idx))
     }
 
-    fn decode_header<'a>(&self, data: &'a [u8]) -> Result<(Header, usize), Box<dyn Error>> {
+    fn decode_header<'a>(&self, data: &'a [u8]) -> Result<(Header, usize), Error> {
         let mut header = Header {
             version: 0,
             total_field: 0,
@@ -50,10 +47,12 @@ impl CmdcCodec {
         };
 
         if data.is_empty() {
-            return Err("Invalid cMDC header, no header".into());
+            return Err(Error::DecodeError("Invalid cMDC header, no header".into()));
         }
         if data[0] != b'<' {
-            return Err("Invalid cMDC header, first character must be '<'".into());
+            return Err(Error::DecodeError(
+                "Invalid cMDC header, first character must be '<'".into(),
+            ));
         }
 
         let mut field_number = 0;
@@ -69,8 +68,9 @@ impl CmdcCodec {
                 }
                 b',' => {
                     let field_data = &data[mark..idx];
-                    let v = Self::bytes_to_int(field_data)
-                        .map_err(|err| format!("Invalid cMDC header, {}", err))?;
+                    let v = Self::bytes_to_int(field_data).map_err(|err| {
+                        Error::DecodeError(format!("Invalid cMDC header, {}", err))
+                    })?;
 
                     match field_number {
                         0 => header.version = v as u8,
@@ -78,7 +78,11 @@ impl CmdcCodec {
                         2 => header.depth = v as i8,
                         3 => header.key = v as i32,
                         4 => header.schema_version = v as u16,
-                        _ => return Err(format!("Invalid cMDC header, 6 fields expected").into()),
+                        _ => {
+                            return Err(Error::DecodeError(
+                                format!("Invalid cMDC header, 6 fields expected").into(),
+                            ))
+                        }
                     }
                     field_number += 1;
 
@@ -88,40 +92,48 @@ impl CmdcCodec {
                 }
                 c if c.is_ascii_digit() || c == b'-' => {}
                 c => {
-                    return Err(format!(
-                        "Invalid cMDC character '{}' in header, numeric expected",
-                        c as char
-                    )
-                    .into())
+                    return Err(Error::DecodeError(
+                        format!(
+                            "Invalid cMDC character '{}' in header, numeric expected",
+                            c as char
+                        )
+                        .into(),
+                    ))
                 }
             }
             idx += 1;
         }
 
         if complete == false {
-            return Err("Invalid cMDC header, missing '>'".into());
+            return Err(Error::DecodeError(
+                "Invalid cMDC header, missing '>'".into(),
+            ));
         }
 
         if field_number != 5 {
-            return Err("Invalid cMDC header, 6 fields expected".into());
+            return Err(Error::DecodeError(
+                "Invalid cMDC header, 6 fields expected".into(),
+            ));
         }
 
         let field_data = &data[mark..idx - 1];
         let v = Self::bytes_to_int(field_data)
-            .map_err(|err| format!("Invalid cMDC header, {}", err))?;
+            .map_err(|err| Error::DecodeError(format!("Invalid cMDC header, {}", err)))?;
         header.ext_version = v as u16;
 
         Ok((header, idx))
     }
 
-    fn decode_body<'a>(&self, data: &'a [u8]) -> Result<(Vec<Field<'a>>, usize), Box<dyn Error>> {
+    fn decode_body<'a>(&self, data: &'a [u8]) -> Result<(Vec<Field<'a>>, usize), Error> {
         let mut fields = vec![];
 
         if data.is_empty() {
-            return Err("Invalid cMDC body, no body".into());
+            return Err(Error::DecodeError("Invalid cMDC body, no body".into()));
         }
         if data[0] != b'[' {
-            return Err("Invalid cMDC body, first character must be '['".into());
+            return Err(Error::DecodeError(
+                "Invalid cMDC body, first character must be '['".into(),
+            ));
         }
 
         let mut idx = 1;
@@ -145,19 +157,25 @@ impl CmdcCodec {
                 if c == b')' {
                     round -= 1;
                 } else if round_mark == 0 {
-                    return Err("Invalid cMDC body, mismatch string length".into());
+                    return Err(Error::DecodeError(
+                        "Invalid cMDC body, mismatch string length".into(),
+                    ));
                 } else if c == b':' {
                     let field_data = &data[round_mark + 1..idx];
-                    let len = Self::bytes_to_int(field_data)
-                        .map_err(|err| format!("Invalid string field, {}", err))?;
+                    let len = Self::bytes_to_int(field_data).map_err(|err| {
+                        Error::DecodeError(format!("Invalid string field, {}", err))
+                    })?;
+
                     idx += len as usize; // skip the string field
                     round_mark = 0; // reset round mark
                 } else if !c.is_ascii_digit() {
-                    return Err(format!(
-                        "Invalid character '{}', numeric expected for string length",
-                        c as char
-                    )
-                    .into());
+                    return Err(Error::DecodeError(
+                        format!(
+                            "Invalid character '{}', numeric expected for string length",
+                            c as char
+                        )
+                        .into(),
+                    ));
                 }
                 idx += 1;
                 continue;
@@ -214,7 +232,9 @@ impl CmdcCodec {
         }
 
         if !complete {
-            return Err("Invalid cMDC body, no end of body".into());
+            return Err(Error::DecodeError(
+                "Invalid cMDC body, no end of body".into(),
+            ));
         }
 
         // Extract last field
@@ -235,11 +255,11 @@ impl CmdcCodec {
         Ok((fields, idx))
     }
 
-    pub fn bytes_to_int(data: &[u8]) -> Result<i32, Box<dyn Error>> {
+    pub fn bytes_to_int(data: &[u8]) -> Result<i32, Error> {
         let str_data = std::str::from_utf8(data)?;
-        str_data
-            .parse::<i32>()
-            .map_err(|_| format!("Invalid digit found in '{}'", str_data).into())
+        str_data.parse::<i32>().map_err(|_| {
+            Error::DecodeError(format!("Invalid digit found in '{}'", str_data).into())
+        })
     }
 }
 

@@ -3,11 +3,11 @@ pub mod encode;
 pub mod value;
 
 use crate::codec::Codec;
+use crate::error::Error;
 use crate::mdd::Containers;
 use crate::mdd::Field;
 use crate::mdd::FieldType;
 use crate::mdd::Value;
-use std::error::Error;
 use std::io::BufWriter;
 
 pub static CMDC_CODEC: CmdcCodec = CmdcCodec {};
@@ -16,18 +16,23 @@ pub static CMDC_CODEC: CmdcCodec = CmdcCodec {};
 pub struct CmdcCodec {}
 
 impl Codec for CmdcCodec {
-    fn decode<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
+    fn decode<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Error> {
         self.decode_containers(data)
     }
 
-    fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn encode(&self, containers: &Containers) -> Result<Vec<u8>, Error> {
         let vec = Vec::with_capacity(self.get_containers_len(containers));
         let mut buffer = BufWriter::new(vec);
         self.encode_containers(&mut buffer, containers)?;
-        Ok(buffer.into_inner()?)
+
+        let b = buffer
+            .into_inner()
+            .map_err(|e| Error::EncodeError(format!("Encode error: {}", e)))?;
+
+        Ok(b)
     }
 
-    fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Box<dyn Error>> {
+    fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Box<dyn std::error::Error>> {
         match field.field_type {
             FieldType::Struct => Ok(Value::Struct(self.decode_struct(field.data)?)),
             FieldType::String => Ok(Value::String(self.decode_string(field.data)?.to_string())),
@@ -43,7 +48,7 @@ impl Codec for CmdcCodec {
         }
     }
 
-    fn encode_field(&self, field: &Field) -> Result<Vec<u8>, Box<dyn Error>> {
+    fn encode_field(&self, field: &Field) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
         // If field is null, return empty vec
         if field.is_null {
             return Ok(vec![]);
