@@ -1,6 +1,6 @@
 use crate::codec::Codec;
+use crate::error::Error;
 use core::clone::Clone;
-use std::error::Error;
 
 #[derive(Debug, Clone)]
 pub struct Containers<'a> {
@@ -80,14 +80,14 @@ impl<'a> Field<'a> {
         }
     }
 
-    pub fn decode_value(&mut self) -> Result<Option<&Value<'a>>, Box<dyn Error>> {
+    pub fn decode_value(&mut self) -> Result<Option<&Value<'a>>, Error> {
         if self.is_null {
             return Ok(None);
         }
         if self.value.is_none() {
             let codec = match self.codec.as_ref() {
                 Some(codec) => codec,
-                None => return Err("No codec".into()),
+                None => return Err(Error::DecodeError("No codec".into())),
             };
 
             let value = codec.decode_field(self)?;
@@ -96,13 +96,13 @@ impl<'a> Field<'a> {
         Ok(self.value.as_ref())
     }
 
-    pub fn get_value(&self) -> Result<Option<&Value<'a>>, Box<dyn Error>> {
+    pub fn get_value(&self) -> Result<Option<&Value<'a>>, Error> {
         if self.is_null {
             return Ok(None);
         }
         match &self.value {
             Some(ref v) => Ok(Some(v)),
-            None => Err("Field not decoded yet".into()),
+            None => Err(Error::DecodeError("Field not decoded yet".into())),
         }
     }
 

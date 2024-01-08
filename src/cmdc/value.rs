@@ -1,24 +1,24 @@
 use crate::cmdc::CmdcCodec;
 use crate::cmdc::Containers;
 use crate::codec::Codec;
+use crate::error::Error;
 use core::str::from_utf8;
-use std::error::Error;
 
 impl CmdcCodec {
-    pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Box<dyn Error>> {
+    pub fn decode_struct<'a>(&self, data: &'a [u8]) -> Result<Containers<'a>, Error> {
         Ok(self.decode(data)?)
     }
 
-    pub fn encode_struct(&self, containers: &Containers) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_struct(&self, containers: &Containers) -> Result<Vec<u8>, Error> {
         Ok(self.encode(containers)?)
     }
 
-    pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Box<dyn Error>> {
+    pub fn decode_string<'a>(&self, data: &'a [u8]) -> Result<&'a str, Error> {
         if data.is_empty() {
             return Ok("");
         }
         if data[0] != b'(' {
-            return Err("Invalid string value".into());
+            return Err(Error::DecodeError("Invalid string value".into()));
         }
 
         for (idx, &c) in data.iter().enumerate().skip(1) {
@@ -27,20 +27,24 @@ impl CmdcCodec {
                 let len = Self::bytes_to_int(temp)? as usize;
 
                 if idx + 1 + len > data.len() {
-                    return Err(format!("Invalid string length, {} is too long", len).into());
+                    return Err(Error::DecodeError(
+                        format!("Invalid string length, {} is too long", len).into(),
+                    ));
                 }
                 if data[idx + 1 + len] != b')' {
-                    return Err(format!("Invalid string length, {} is too short", len).into());
+                    return Err(Error::DecodeError(
+                        format!("Invalid string length, {} is too short", len).into(),
+                    ));
                 }
                 let str = from_utf8(&data[idx + 1..idx + 1 + len])?;
                 return Ok(str);
             }
         }
 
-        Err("Invalid string value".into())
+        Err(Error::DecodeError("Invalid string value".into()))
     }
 
-    pub fn encode_string(&self, s: &str) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_string(&self, s: &str) -> Result<Vec<u8>, Error> {
         let mut data = Vec::new();
         data.push(b'(');
         data.extend_from_slice(&s.len().to_string().into_bytes());
@@ -50,75 +54,75 @@ impl CmdcCodec {
         Ok(data)
     }
 
-    pub fn decode_int8(&self, data: &[u8]) -> Result<i8, Box<dyn Error>> {
+    pub fn decode_int8(&self, data: &[u8]) -> Result<i8, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<i8>()?)
     }
 
-    pub fn encode_int8(&self, v: i8) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_int8(&self, v: i8) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_int16(&self, data: &[u8]) -> Result<i16, Box<dyn Error>> {
+    pub fn decode_int16(&self, data: &[u8]) -> Result<i16, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<i16>()?)
     }
 
-    pub fn encode_int16(&self, v: i16) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_int16(&self, v: i16) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_int32(&self, data: &[u8]) -> Result<i32, Box<dyn Error>> {
+    pub fn decode_int32(&self, data: &[u8]) -> Result<i32, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<i32>()?)
     }
 
-    pub fn encode_int32(&self, v: i32) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_int32(&self, v: i32) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_int64(&self, data: &[u8]) -> Result<i64, Box<dyn Error>> {
+    pub fn decode_int64(&self, data: &[u8]) -> Result<i64, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<i64>()?)
     }
 
-    pub fn encode_int64(&self, v: i64) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_int64(&self, v: i64) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_uint8(&self, data: &[u8]) -> Result<u8, Box<dyn Error>> {
+    pub fn decode_uint8(&self, data: &[u8]) -> Result<u8, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<u8>()?)
     }
 
-    pub fn encode_uint8(&self, v: u8) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_uint8(&self, v: u8) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_uint16(&self, data: &[u8]) -> Result<u16, Box<dyn Error>> {
+    pub fn decode_uint16(&self, data: &[u8]) -> Result<u16, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<u16>()?)
     }
 
-    pub fn encode_uint16(&self, v: u16) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_uint16(&self, v: u16) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_uint32(&self, data: &[u8]) -> Result<u32, Box<dyn Error>> {
+    pub fn decode_uint32(&self, data: &[u8]) -> Result<u32, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<u32>()?)
     }
 
-    pub fn encode_uint32(&self, v: u32) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_uint32(&self, v: u32) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 
-    pub fn decode_uint64(&self, data: &[u8]) -> Result<u64, Box<dyn Error>> {
+    pub fn decode_uint64(&self, data: &[u8]) -> Result<u64, Error> {
         let s = from_utf8(data)?;
         Ok(s.parse::<u64>()?)
     }
 
-    pub fn encode_uint64(&self, v: u64) -> Result<Vec<u8>, Box<dyn Error>> {
+    pub fn encode_uint64(&self, v: u64) -> Result<Vec<u8>, Error> {
         Ok(v.to_string().into_bytes())
     }
 }

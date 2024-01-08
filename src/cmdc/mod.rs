@@ -32,7 +32,7 @@ impl Codec for CmdcCodec {
         Ok(b)
     }
 
-    fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Box<dyn std::error::Error>> {
+    fn decode_field<'a>(&self, field: &Field<'a>) -> Result<Value<'a>, Error> {
         match field.field_type {
             FieldType::Struct => Ok(Value::Struct(self.decode_struct(field.data)?)),
             FieldType::String => Ok(Value::String(self.decode_string(field.data)?.to_string())),
@@ -48,7 +48,7 @@ impl Codec for CmdcCodec {
         }
     }
 
-    fn encode_field(&self, field: &Field) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    fn encode_field(&self, field: &Field) -> Result<Vec<u8>, Error> {
         // If field is null, return empty vec
         if field.is_null {
             return Ok(vec![]);
