@@ -3,6 +3,7 @@ name = "rust_mdd"
 version = "0.1.2"
 edition = "2021"
 authors = ["Jason Lee<jason.lee@matrixx.com>"]
+description = "Rust implementation of MDD"
 license = "MIT"
 repository = "https://github.com/matrixxsoftware/rust-mdd"
 
